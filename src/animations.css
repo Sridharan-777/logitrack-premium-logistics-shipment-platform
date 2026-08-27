@@ -1,0 +1,60 @@
+/* Lightweight UI animations for Dashboard
+   - bar-anim: scaleY animation for SVG bars
+   - donut transition for stroke-dashoffset
+   - fade-up for entrance
+   - pulse for notification attention
+   - stat number transition
+*/
+
+.fade-up {
+  transform: translateY(8px);
+  opacity: 0;
+  transition: transform 420ms cubic-bezier(.2,.9,.2,1), opacity 420ms ease;
+}
+
+.fade-up.enter {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* SVG bar animation using scaleY */
+.bar-anim {
+  transform-origin: center bottom;
+  transition: transform 700ms cubic-bezier(.2,.9,.2,1);
+}
+
+.bar-anim.scale-0 {
+  transform: scaleY(0);
+}
+
+.bar-anim.scale-1 {
+  transform: scaleY(1);
+}
+
+/* Donut transitions */
+.donut circle {
+  transition: stroke-dashoffset 900ms cubic-bezier(.2,.9,.2,1), opacity 600ms ease;
+}
+
+/* Notification pulse */
+.pulse-notif {
+  animation: pulse 1800ms infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Animated stat slight pop */
+.stat-pop {
+  transform: translateY(6px);
+  opacity: 0;
+  transition: transform 420ms cubic-bezier(.2,.9,.2,1), opacity 420ms ease;
+}
+
+.stat-pop.enter {
+  transform: translateY(0);
+  opacity: 1;
+}

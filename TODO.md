@@ -1,0 +1,22 @@
+# JSX Conversion Task
+
+- [x] Analyze all .tsx files
+- [x] Get plan approved
+- [x] Convert src/components/Sidebar.tsx -> Sidebar.jsx
+- [x] Convert src/components/Header.tsx -> Header.jsx
+- [x] Convert src/components/LandingPage.tsx -> LandingPage.jsx
+- [x] Convert src/components/AuthViews.tsx -> AuthViews.jsx
+- [x] Convert src/components/DashboardView.tsx -> DashboardView.jsx
+- [x] Convert src/components/BookingFlow.tsx -> BookingFlow.jsx
+- [x] Convert src/components/TrackingView.tsx -> TrackingView.jsx
+- [x] Convert src/components/ShipmentsListView.tsx -> ShipmentsListView.jsx
+- [x] Convert src/components/ShipmentDetailsView.tsx -> ShipmentDetailsView.jsx
+- [x] Convert src/components/SupportView.tsx -> SupportView.jsx
+- [x] Convert src/components/NotificationsView.tsx -> NotificationsView.jsx
+- [x] Convert src/components/ProfileView.tsx -> ProfileView.jsx
+- [x] Convert src/components/ThreeDTrackMap.tsx -> ThreeDTrackMap.jsx
+- [x] Convert src/types.ts -> types.js
+- [x] Convert src/App.tsx -> App.jsx
+- [x] Delete src/main.tsx, old .tsx files
+- [x] Update index.html -> main.jsx
+- [x] Run npm run build to verify
