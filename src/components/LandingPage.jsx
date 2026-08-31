@@ -19,21 +19,24 @@ import ThreeDTrackMap from "./ThreeDTrackMap";
 
 export default function LandingPage({
   onNavigate,
+  onSearchShipment,
   onSearchTrack,
-  availableTrackingIds,
+  guestSearchFeedback,
+  availableTrackingIds = ["TRK-8924-M", "TRK-774109-C", "TRK-891992-B"],
 }) {
   const [trackId, setTrackId] = useState("");
+  const searchCallback = onSearchShipment || onSearchTrack || (() => {});
 
   const handleTrackSubmit = (e) => {
     e.preventDefault();
     if (!trackId.trim()) return;
     const sanitizedId = trackId.trim().toUpperCase();
-    onSearchTrack(sanitizedId);
+    searchCallback(sanitizedId);
   };
 
   const handleSampleTrackClick = (id) => {
     setTrackId(id);
-    onSearchTrack(id);
+    searchCallback(id);
   };
 
   return (
@@ -146,6 +149,12 @@ export default function LandingPage({
                 <ArrowRight className="h-5 w-5" />
               </button>
             </form>
+
+            {guestSearchFeedback && (
+              <div className="mt-3 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2">
+                <span>⚠️ {guestSearchFeedback}</span>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400 font-medium">
               <span className="font-bold text-slate-300">Quick 3D Demo:</span>

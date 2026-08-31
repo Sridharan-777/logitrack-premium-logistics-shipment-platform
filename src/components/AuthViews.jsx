@@ -10,52 +10,106 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  Building,
+  Sparkles,
+  Users,
+  KeyRound,
+  Bike,
 } from "lucide-react";
+import { ROLES, INITIAL_USERS } from "../data/mockData";
 
 export function LoginView({ onNavigate, onLoginSuccess }) {
+  const [activeRoleTab, setActiveRoleTab] = useState(ROLES.USER); // 'admin', 'staff', 'worker', 'user'
   const [email, setEmail] = useState("24104029@nec.edu.in");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleRoleTabSelect = (role) => {
+    setActiveRoleTab(role);
+    setError("");
+    if (role === ROLES.ADMIN) {
+      setEmail("admin@logitrack.com");
+      setPassword("admin123");
+    } else if (role === ROLES.STAFF) {
+      setEmail("alex.rivera@logitrack.com");
+      setPassword("staff123");
+    } else if (role === ROLES.WORKER) {
+      setEmail("rahul.worker@logitrack.com");
+      setPassword("worker123");
+    } else {
+      setEmail("24104029@nec.edu.in");
+      setPassword("user123");
+    }
+  };
+
+  const handleQuickDemoLogin = (role) => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      if (role === ROLES.ADMIN) {
+        onLoginSuccess(INITIAL_USERS.admin.name, INITIAL_USERS.admin.email, ROLES.ADMIN);
+      } else if (role === ROLES.STAFF) {
+        onLoginSuccess(INITIAL_USERS.staff.name, INITIAL_USERS.staff.email, ROLES.STAFF);
+      } else if (role === ROLES.WORKER) {
+        onLoginSuccess(INITIAL_USERS.worker.name, INITIAL_USERS.worker.email, ROLES.WORKER);
+      } else {
+        onLoginSuccess(INITIAL_USERS.customer.name, INITIAL_USERS.customer.email, ROLES.USER);
+      }
+    }, 400);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError(
-        "Please enter a valid business email address (e.g., name@company.com).",
-      );
+      setError("Please enter a valid email address (e.g. name@company.com).");
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (password.length < 4) {
+      setError("Password must be at least 4 characters.");
       return;
     }
 
     setLoading(true);
-    // Simulate API delay
     setTimeout(() => {
       setLoading(false);
-      onLoginSuccess("Sridharan K", email);
-    }, 800);
+      let detectedRole = activeRoleTab;
+      let userName = "Sridharan K";
+
+      if (email.toLowerCase().includes("admin") || activeRoleTab === ROLES.ADMIN) {
+        detectedRole = ROLES.ADMIN;
+        userName = "LogiTrack Executive Admin";
+      } else if (email.toLowerCase().includes("worker") || email.toLowerCase().includes("rahul") || activeRoleTab === ROLES.WORKER) {
+        detectedRole = ROLES.WORKER;
+        userName = "Rahul Sharma";
+      } else if (email.toLowerCase().includes("staff") || email.toLowerCase().includes("alex") || activeRoleTab === ROLES.STAFF) {
+        detectedRole = ROLES.STAFF;
+        userName = "Alex Rivera";
+      } else {
+        detectedRole = ROLES.USER;
+        userName = "Sridharan K";
+      }
+
+      onLoginSuccess(userName, email, detectedRole);
+    }, 500);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
       {/* Left Column: Interactive Login Form */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 md:px-16 lg:px-24 bg-slate-950 relative z-10">
-        <div className="max-w-md w-full mx-auto space-y-8 bg-slate-900/90 p-8 md:p-10 rounded-2xl border border-slate-800 shadow-xl">
+      <div className="flex-1 flex flex-col justify-center px-6 py-12 md:px-16 lg:px-20 bg-slate-950 relative z-10">
+        <div className="max-w-md w-full mx-auto space-y-6 bg-slate-900/90 p-8 md:p-9 rounded-3xl border border-slate-800 shadow-2xl">
           {/* Brand Logo Header */}
           <div
             onClick={() => onNavigate("landing")}
             className="flex items-center gap-3 cursor-pointer group w-fit"
           >
-            <div className="p-2.5 bg-sky-500/15 rounded-lg border border-sky-500/30 group-hover:bg-sky-500/25 transition">
+            <div className="p-2.5 bg-sky-500/15 rounded-xl border border-sky-500/30 group-hover:bg-sky-500/25 transition">
               <Truck className="h-6 w-6 text-sky-400" />
             </div>
             <span className="text-xl font-black tracking-tight text-white">
@@ -64,95 +118,161 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
           </div>
 
           {/* Form Header */}
-          <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">
-              Welcome back
+          <div className="space-y-1">
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+              Select Workspace Portal
             </h2>
-            <p className="text-slate-400 text-base">
-              Sign in to manage active shipments, book on-demand couriers, and
-              view billing analytics.
+            <p className="text-slate-400 text-xs">
+              Role-segregated platform for Admins, Staff Supervisors, Field Delivery Workers, and Customers.
             </p>
           </div>
 
-          {/* Error Message Panel */}
+          {/* 4 Role Selector Tabs */}
+          <div className="grid grid-cols-4 gap-1.5 p-1.5 bg-slate-950 rounded-2xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => handleRoleTabSelect(ROLES.USER)}
+              className={`py-2 px-1 rounded-xl text-[11px] font-black transition flex flex-col items-center gap-1 cursor-pointer ${
+                activeRoleTab === ROLES.USER
+                  ? "bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <User className="h-3.5 w-3.5" />
+              <span>Customer</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleRoleTabSelect(ROLES.WORKER)}
+              className={`py-2 px-1 rounded-xl text-[11px] font-black transition flex flex-col items-center gap-1 cursor-pointer ${
+                activeRoleTab === ROLES.WORKER
+                  ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Bike className="h-3.5 w-3.5" />
+              <span>Worker 🛵</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleRoleTabSelect(ROLES.STAFF)}
+              className={`py-2 px-1 rounded-xl text-[11px] font-black transition flex flex-col items-center gap-1 cursor-pointer ${
+                activeRoleTab === ROLES.STAFF
+                  ? "bg-purple-500 text-white shadow-md shadow-purple-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Staff</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleRoleTabSelect(ROLES.ADMIN)}
+              className={`py-2 px-1 rounded-xl text-[11px] font-black transition flex flex-col items-center gap-1 cursor-pointer ${
+                activeRoleTab === ROLES.ADMIN
+                  ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Admin 👑</span>
+            </button>
+          </div>
+
+          {/* 1-Click Quick Demo Login Row */}
+          <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+              <span className="flex items-center gap-1 text-sky-300">
+                <Sparkles className="h-3 w-3 text-sky-400" /> 1-Click Instant Demo Login
+              </span>
+              <span className="text-[10px] text-amber-400 uppercase font-mono">No Pass Required</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin(ROLES.USER)}
+                className="py-1.5 px-1.5 bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
+              >
+                👤 Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin(ROLES.WORKER)}
+                className="py-1.5 px-1.5 bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
+              >
+                🛵 2-Wheeler
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin(ROLES.STAFF)}
+                className="py-1.5 px-1.5 bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
+              >
+                👷 Staff Ops
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin(ROLES.ADMIN)}
+                className="py-1.5 px-1.5 bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
+              >
+                👑 Master Admin
+              </button>
+            </div>
+          </div>
+
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-300 text-sm animate-shake">
-              <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold block">Authentication issue:</span>
-                {error}
-              </div>
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label
-                className="text-base font-bold text-slate-200"
-                htmlFor="login-email"
-              >
-                Business Email
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">
+                {activeRoleTab === ROLES.ADMIN
+                  ? "Admin Security Email"
+                  : activeRoleTab === ROLES.WORKER
+                  ? "Field Worker / Two-Wheeler Courier Email"
+                  : activeRoleTab === ROLES.STAFF
+                  ? "Staff Supervisor Email"
+                  : "Customer Email Address"}
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                  <Mail className="h-5 w-5" />
-                </span>
+                <Mail className="h-4 w-4 absolute inset-y-0 left-3.5 my-auto text-slate-500" />
                 <input
-                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
                   required
-                  className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/25 focus:border-sky-500 transition-all placeholder:text-slate-500 pl-icon-left"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label
-                  className="text-base font-bold text-slate-200"
-                  htmlFor="login-password"
-                >
-                  Password
-                </label>
-                <button
-                  type="button"
-                  className="text-sm font-bold text-sky-400 hover:text-sky-300 hover:underline transition"
-                  onClick={() =>
-                    alert(
-                      "Demo Feature: Password recovery request submitted to administration.",
-                    )
-                  }
-                >
-                  Forgot Password?
-                </button>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <label className="font-bold text-slate-300">Password</label>
+                <span className="text-[10px] text-sky-400">Default: password123</span>
               </div>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                  <Lock className="h-5 w-5" />
-                </span>
+                <Lock className="h-4 w-4 absolute inset-y-0 left-3.5 my-auto text-slate-500" />
                 <input
-                  id="login-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
                   required
-                  className="w-full pl-11 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-xl text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/25 focus:border-sky-500 transition-all placeholder:text-slate-500 pl-icon-left pr-icon-right"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition"
+                  className="absolute inset-y-0 right-3.5 flex items-center text-slate-500 hover:text-slate-300"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -161,64 +281,76 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
               id="btn-login-submit"
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/50 text-slate-950 text-base font-black rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-sky-500/20 border border-transparent focus:ring-2 focus:ring-sky-500/40"
+              className={`w-full py-3 text-slate-950 text-xs md:text-sm font-black rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-lg ${
+                activeRoleTab === ROLES.ADMIN
+                  ? "bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20"
+                  : activeRoleTab === ROLES.WORKER
+                  ? "bg-amber-400 hover:bg-amber-300 shadow-amber-500/20"
+                  : activeRoleTab === ROLES.STAFF
+                  ? "bg-purple-400 hover:bg-purple-300 shadow-purple-500/20"
+                  : "bg-sky-400 hover:bg-sky-300 shadow-sky-500/20"
+              }`}
             >
               {loading ? (
-                <div className="h-5 w-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-4 w-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>Sign In to Terminal</span>
-                  <ArrowRight className="h-5 w-5" />
+                  <span>
+                    Sign In as{" "}
+                    {activeRoleTab === ROLES.ADMIN
+                      ? "Administrator"
+                      : activeRoleTab === ROLES.WORKER
+                      ? "Field Delivery Worker"
+                      : activeRoleTab === ROLES.STAFF
+                      ? "Staff Supervisor"
+                      : "Customer"}
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Switch to Signup */}
-          <p className="text-sm text-slate-400 text-center">
-            Don't have an enterprise account?{" "}
+          <p className="text-xs text-slate-400 text-center">
+            New to LogiTrack 3D?{" "}
             <button
               onClick={() => onNavigate("register")}
-              className="font-bold text-sky-400 hover:text-sky-300 hover:underline transition cursor-pointer"
+              className="font-bold text-sky-400 hover:underline"
             >
-              Register corporate account
+              Create Account
             </button>
           </p>
         </div>
       </div>
 
-      {/* Right Column: Dark themed testimonial panel */}
+      {/* Right Column: Role Architecture */}
       <div className="hidden md:flex flex-1 relative bg-slate-900 items-center justify-center p-8">
         <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 to-slate-900 opacity-90"></div>
-        <img
-          src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&q=80&w=800"
-          alt="Cargo Distribution Logistics"
-          className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-10"
-          referrerPolicy="no-referrer"
-        />
-
-        {/* Informative, Dark themed Testimonial */}
-        <div className="relative z-10 max-w-md p-8 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl space-y-6">
-          <div className="flex items-center gap-2 text-sky-400 text-sm font-bold uppercase tracking-wider">
+        <div className="relative z-10 max-w-md p-8 bg-slate-900/90 rounded-3xl border border-slate-800 shadow-2xl space-y-5">
+          <div className="flex items-center gap-2 text-sky-400 text-xs font-black uppercase tracking-wider">
             <ShieldCheck className="h-5 w-5 text-sky-400" />
-            <span>Frictionless Fleet Network</span>
+            <span>4-Tier Integrated Logistics Architecture</span>
           </div>
-          <p className="text-base font-medium text-slate-300 leading-relaxed">
-            "LogiTrack 3D handles our intercontinental medical distribution. Their
-            on-time record is spotless, and the real-time API integrations
-            reduced our operational friction by 40%."
-          </p>
-          <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
-            <div className="h-10 w-10 rounded-full bg-sky-500/15 border border-sky-500/30 flex items-center justify-center font-bold text-sky-400 text-sm">
-              MV
+
+          <div className="space-y-3 text-xs text-slate-300">
+            <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+              <span className="font-black text-emerald-400 block mb-0.5">👑 Administrator:</span>
+              <span>Full Master CRUD on Users, Workers, Staff, Shipments, Fleet; live Profit &amp; Loss Calculator and Excel exports.</span>
             </div>
-            <div>
-              <p className="text-sm font-bold text-white">
-                Dr. Marcus Vance
-              </p>
-              <p className="text-xs text-slate-400">
-                Global Health Labs, Director of Logistics
-              </p>
+
+            <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+              <span className="font-black text-purple-400 block mb-0.5">👷 Staff Supervisor:</span>
+              <span>Monitors parcel data &amp; customer receipt status, triggers rapid two-wheeler redeliveries, and performs CRUD on workers and users.</span>
+            </div>
+
+            <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+              <span className="font-black text-amber-400 block mb-0.5">🛵 Doorstep Delivery Worker:</span>
+              <span>Reports transport vehicle (Two-Wheeler EV Scooter / Bike / Van), executes doorstep deliveries, and captures customer signatures.</span>
+            </div>
+
+            <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+              <span className="font-black text-sky-400 block mb-0.5">👤 Customer / Client:</span>
+              <span>On-demand 3D package booking, live GPS map tracking, and instant delivery receipt confirmations.</span>
             </div>
           </div>
         </div>
@@ -228,66 +360,36 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
 }
 
 export function RegisterView({ onNavigate, onLoginSuccess }) {
+  const [role, setRole] = useState(ROLES.USER);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [password, setPassword] = useState("");
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!name.trim()) {
-      setError("Please enter your full name.");
+    if (!name || !email || password.length < 4) {
+      setError("Please fill in all fields (password min 4 chars).");
       return;
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid business email.");
-      return;
-    }
-
-    if (!company.trim()) {
-      setError("Please enter your company or organization name.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError(
-        "For security, enterprise passwords must be at least 8 characters long.",
-      );
-      return;
-    }
-
-    if (!agreeTerms) {
-      setError(
-        "You must agree to the Terms of Service & Privacy Protection Shield.",
-      );
-      return;
-    }
-
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      onLoginSuccess(name, email);
-    }, 1000);
+      onLoginSuccess(name, email, role);
+    }, 700);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
-      {/* Left Column: Form Registration Panel */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 md:px-16 lg:px-24 bg-slate-950 relative z-10">
-        <div className="max-w-md w-full mx-auto space-y-8 bg-slate-900/90 p-8 md:p-10 rounded-2xl border border-slate-800 shadow-xl">
-          {/* Brand Logo Header */}
+        <div className="max-w-md w-full mx-auto space-y-6 bg-slate-900/90 p-8 md:p-10 rounded-3xl border border-slate-800 shadow-2xl">
           <div
             onClick={() => onNavigate("landing")}
             className="flex items-center gap-3 cursor-pointer group w-fit"
           >
-            <div className="p-2.5 bg-sky-500/15 rounded-lg border border-sky-500/30 group-hover:bg-sky-500/25 transition">
+            <div className="p-2.5 bg-sky-500/15 rounded-xl border border-sky-500/30 group-hover:bg-sky-500/25 transition">
               <Truck className="h-6 w-6 text-sky-400" />
             </div>
             <span className="text-xl font-black tracking-tight text-white">
@@ -295,235 +397,128 @@ export function RegisterView({ onNavigate, onLoginSuccess }) {
             </span>
           </div>
 
-          {/* Form Header */}
-          <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">
-              Create an Account
+          <div className="space-y-1">
+            <h2 className="text-2xl md:text-3xl font-black text-white">
+              Create LogiTrack Account
             </h2>
-            <p className="text-slate-400 text-base">
-              Register a secure corporate dashboard workspace. Manage instant
-              dispatches, track cargo lists, and control API configurations.
+            <p className="text-xs text-slate-400">
+              Select your organization role to configure access permissions.
             </p>
           </div>
 
-          {/* Error Message Panel */}
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-300 text-sm animate-shake">
-              <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold block">Registration issue:</span>
-                {error}
-              </div>
-            </div>
-          )}
-
-          {/* Signup Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Full Name */}
-            <div className="space-y-2">
-              <label
-                className="text-base font-bold text-slate-200"
-                htmlFor="reg-name"
-              >
-                Full Name
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                  <User className="h-5 w-5" />
-                </span>
-                <input
-                  id="reg-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Sridharan K"
-                  required
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/25 focus:border-sky-500 transition-all placeholder:text-slate-500 pl-icon-left"
-                />
-              </div>
-            </div>
-
-            {/* Business Email */}
-            <div className="space-y-2">
-              <label
-                className="text-base font-bold text-slate-200"
-                htmlFor="reg-email"
-              >
-                Business Email
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                  <Mail className="h-5 w-5" />
-                </span>
-                <input
-                  id="reg-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="24104029@nec.edu.in"
-                  required
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/25 focus:border-sky-500 transition-all placeholder:text-slate-500 pl-icon-left"
-                />
-              </div>
-            </div>
-
-            {/* Company Name */}
-            <div className="space-y-2">
-              <label
-                className="text-base font-bold text-slate-200"
-                htmlFor="reg-company"
-              >
-                Company / Organization
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                  <Truck className="h-5 w-5" />
-                </span>
-                <input
-                  id="reg-company"
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Enterprise Inc."
-                  required
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/25 focus:border-sky-500 transition-all placeholder:text-slate-500 pl-icon-left"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="space-y-2">
-              <label
-                className="text-base font-bold text-slate-200"
-                htmlFor="reg-password"
-              >
-                Security Password
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                  <Lock className="h-5 w-5" />
-                </span>
-                <input
-                  id="reg-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  required
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/25 focus:border-sky-500 transition-all placeholder:text-slate-500 pl-icon-left"
-                />
-              </div>
-            </div>
-
-            {/* Terms check */}
-            <div className="flex items-start gap-2.5 pt-1">
-              <input
-                id="reg-agree"
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="mt-1 h-5 w-5 rounded-sm border-slate-700 bg-slate-800 text-sky-500 focus:ring-sky-500/20"
-              />
-              <label
-                htmlFor="reg-agree"
-                className="text-sm text-slate-400 leading-normal"
-              >
-                I agree to the{" "}
-                <span className="text-sky-400 hover:underline cursor-pointer">
-                  SLA Agreement
-                </span>
-                ,{" "}
-                <span className="text-sky-400 hover:underline cursor-pointer">
-                  Terms of Service
-                </span>
-                , and{" "}
-                <span className="text-sky-400 hover:underline cursor-pointer">
-                  Privacy Shield
-                </span>
-                .
-              </label>
-            </div>
-
-            {/* Signup CTA */}
+          {/* Role selector */}
+          <div className="grid grid-cols-4 gap-1.5">
             <button
-              id="btn-register-submit"
+              type="button"
+              onClick={() => setRole(ROLES.USER)}
+              className={`py-2 px-1 rounded-xl text-xs font-bold border transition ${
+                role === ROLES.USER
+                  ? "bg-sky-500 text-slate-950 border-sky-400 font-black"
+                  : "bg-slate-950 text-slate-400 border-slate-800"
+              }`}
+            >
+              Customer
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole(ROLES.WORKER)}
+              className={`py-2 px-1 rounded-xl text-xs font-bold border transition ${
+                role === ROLES.WORKER
+                  ? "bg-amber-500 text-slate-950 border-amber-400 font-black"
+                  : "bg-slate-950 text-slate-400 border-slate-800"
+              }`}
+            >
+              Worker 🛵
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole(ROLES.STAFF)}
+              className={`py-2 px-1 rounded-xl text-xs font-bold border transition ${
+                role === ROLES.STAFF
+                  ? "bg-purple-500 text-white border-purple-400 font-black"
+                  : "bg-slate-950 text-slate-400 border-slate-800"
+              }`}
+            >
+              Staff
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole(ROLES.ADMIN)}
+              className={`py-2 px-1 rounded-xl text-xs font-bold border transition ${
+                role === ROLES.ADMIN
+                  ? "bg-emerald-500 text-slate-950 border-emerald-400 font-black"
+                  : "bg-slate-950 text-slate-400 border-slate-800"
+              }`}
+            >
+              Admin 👑
+            </button>
+          </div>
+
+          {error && <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-bold rounded-xl">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Full Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Sridharan K / Rahul Sharma"
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-sky-400"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com"
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-sky-400 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Company / Affiliation</label>
+              <input
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="National Engineering College"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-sky-400"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 4 characters"
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-sky-400 font-mono"
+              />
+            </div>
+
+            <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/50 text-slate-950 text-base font-black rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-sky-500/20 focus:ring-2 focus:ring-sky-500/40"
+              className="w-full py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs md:text-sm font-black rounded-xl transition cursor-pointer shadow-lg shadow-sky-500/20 mt-2"
             >
-              {loading ? (
-                <div className="h-5 w-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <span>Create Enterprise Workspace</span>
-                  <ArrowRight className="h-5 w-5" />
-                </>
-              )}
+              {loading ? "Creating..." : "Create Account & Enter"}
             </button>
           </form>
 
-          {/* Switch to Login */}
-          <p className="text-sm text-slate-400 text-center">
-            Already have an enterprise dashboard?{" "}
-            <button
-              onClick={() => onNavigate("login")}
-              className="font-bold text-sky-400 hover:text-sky-300 hover:underline transition cursor-pointer"
-            >
-              Sign in to terminal
+          <p className="text-xs text-slate-400 text-center">
+            Already registered?{" "}
+            <button onClick={() => onNavigate("login")} className="font-bold text-sky-400 hover:underline">
+              Sign In
             </button>
           </p>
-        </div>
-      </div>
-
-      {/* Right Column: Dark themed feature panel */}
-      <div className="hidden md:flex flex-1 relative bg-slate-900 items-center justify-center p-8">
-        <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 to-slate-900 opacity-95"></div>
-        <img
-          src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800"
-          alt="LogiTrack Distribution Facility"
-          className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-10"
-          referrerPolicy="no-referrer"
-        />
-
-        {/* Feature overlay cards */}
-        <div className="relative z-10 max-w-sm p-8 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl space-y-6">
-          <div className="flex items-center gap-2 text-sky-400 text-sm font-bold uppercase tracking-wider">
-            <CheckCircle className="h-5 w-5 text-sky-400" />
-            <span>Secure Corporate Account</span>
-          </div>
-          <h3 className="text-xl font-bold text-white tracking-tight">
-            Active Distribution Protection
-          </h3>
-          <div className="space-y-4">
-            <div className="flex gap-3">
-              <div className="p-1 bg-sky-500/15 rounded-md text-sky-400 shrink-0 h-fit mt-0.5 border border-sky-500/20">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">
-                  Full AES-256 Transport Encryption
-                </p>
-                <p className="text-xs text-slate-400 leading-normal">
-                  Your physical transit schedules, addresses, and secure
-                  documents are fully encrypted.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="p-1 bg-sky-500/15 rounded-md text-sky-400 shrink-0 h-fit mt-0.5 border border-sky-500/20">
-                <CheckCircle className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">
-                  Instant API access and Sandbox Keys
-                </p>
-                <p className="text-xs text-slate-400 leading-normal">
-                  Generate private developer access keys immediately upon
-                  registration.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

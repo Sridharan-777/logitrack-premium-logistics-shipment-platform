@@ -27,7 +27,7 @@ import {
   Wind,
 } from "lucide-react";
 
-// Accurate Geographic Coordinates DB (Lat, Lon)
+// Geographic Coordinates DB (Lat, Lon)
 const ACCURATE_COORDINATES = {
   Kovilpatti: { lat: 9.1726, lon: 77.8698, label: "Kovilpatti HQ Hub", country: "India" },
   Chennai: { lat: 13.0827, lon: 80.2707, label: "Chennai Airbase Gateway", country: "India" },
@@ -52,12 +52,13 @@ const ACCURATE_COORDINATES = {
   Sydney: { lat: -33.8688, lon: 151.2093, label: "Sydney Kingsford Smith / Botany Port", country: "Australia" },
 };
 
-// Real-World Map Layer Tile Providers
+// Premium High-Definition Tile Layers (100% Free, Zero Watermark, Dark Cyber Aesthetic)
 const TILE_LAYERS = {
   dark: {
     name: "Cyber Dark",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    maxZoom: 19,
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    maxZoom: 16,
+    className: "cyber-dark-tiles",
   },
   satellite: {
     name: "Satellite HD",
@@ -66,27 +67,28 @@ const TILE_LAYERS = {
   },
   street: {
     name: "Street Map",
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     maxZoom: 19,
   },
   voyager: {
-    name: "Navigation",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    maxZoom: 19,
+    name: "Midnight Ocean",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}",
+    maxZoom: 13,
+    className: "cyber-ocean-tiles",
   },
 };
 
-// SVG Icons for different vehicle types
+// Vehicle Icons
 const VEHICLE_SVGS = {
   flight: `
-    <svg viewBox="0 0 36 36" fill="none" class="w-7 h-7 drop-shadow-md text-sky-400">
+    <svg viewBox="0 0 36 36" fill="none" style="width: 26px; height: 26px;" class="drop-shadow-md">
       <path d="M18 2 L14 12 L4 16 L4 19 L14 17 L14 26 L10 29 L10 32 L18 30 L26 32 L26 29 L22 26 L22 17 L32 19 L32 16 L22 12 Z" 
             fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" stroke-linejoin="round"/>
       <circle cx="18" cy="7" r="1.5" fill="#ffffff"/>
     </svg>
   `,
   ship: `
-    <svg viewBox="0 0 36 36" fill="none" class="w-7 h-7 drop-shadow-md text-cyan-400">
+    <svg viewBox="0 0 36 36" fill="none" style="width: 26px; height: 26px;" class="drop-shadow-md">
       <path d="M18 3 L10 12 L10 27 C10 31 26 31 26 27 L26 12 Z" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5"/>
       <rect x="13" y="14" width="10" height="9" rx="1.5" fill="#0369a1" stroke="#bae6fd" stroke-width="1"/>
       <circle cx="18" cy="8" r="2" fill="#38bdf8"/>
@@ -94,7 +96,7 @@ const VEHICLE_SVGS = {
     </svg>
   `,
   truck: `
-    <svg viewBox="0 0 36 36" fill="none" class="w-7 h-7 drop-shadow-md text-amber-400">
+    <svg viewBox="0 0 36 36" fill="none" style="width: 26px; height: 26px;" class="drop-shadow-md">
       <rect x="11" y="4" width="14" height="20" rx="3" fill="#f59e0b" stroke="#b45309" stroke-width="1.5"/>
       <rect x="13" y="24" width="10" height="8" rx="2" fill="#d97706"/>
       <circle cx="9" cy="10" r="2" fill="#1e293b"/>
@@ -105,13 +107,29 @@ const VEHICLE_SVGS = {
     </svg>
   `,
   van: `
-    <svg viewBox="0 0 36 36" fill="none" class="w-7 h-7 drop-shadow-md text-emerald-400">
+    <svg viewBox="0 0 36 36" fill="none" style="width: 26px; height: 26px;" class="drop-shadow-md">
       <rect x="11" y="6" width="14" height="24" rx="4" fill="#10b981" stroke="#047857" stroke-width="1.5"/>
       <rect x="13" y="8" width="10" height="6" rx="1.5" fill="#a7f3d0"/>
       <circle cx="9" cy="12" r="2" fill="#1e293b"/>
       <circle cx="27" cy="12" r="2" fill="#1e293b"/>
       <circle cx="9" cy="26" r="2" fill="#1e293b"/>
       <circle cx="27" cy="26" r="2" fill="#1e293b"/>
+    </svg>
+  `,
+  "two-wheeler": `
+    <svg viewBox="0 0 36 36" fill="none" style="width: 26px; height: 26px;" class="drop-shadow-md">
+      <circle cx="9" cy="25" r="5.5" stroke="#f59e0b" stroke-width="2.5" fill="#1e293b"/>
+      <circle cx="27" cy="25" r="5.5" stroke="#f59e0b" stroke-width="2.5" fill="#1e293b"/>
+      <path d="M9 25 L16 16 L22 16 L27 25 M16 16 L13 8 L8 8 M22 16 L21 8" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="18" cy="13" r="2.5" fill="#f59e0b"/>
+    </svg>
+  `,
+  bike: `
+    <svg viewBox="0 0 36 36" fill="none" style="width: 26px; height: 26px;" class="drop-shadow-md">
+      <circle cx="9" cy="25" r="5.5" stroke="#10b981" stroke-width="2.5" fill="#1e293b"/>
+      <circle cx="27" cy="25" r="5.5" stroke="#10b981" stroke-width="2.5" fill="#1e293b"/>
+      <path d="M9 25 L16 16 L22 16 L27 25 M16 16 L13 8 L8 8 M22 16 L21 8" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="18" cy="13" r="2.5" fill="#10b981"/>
     </svg>
   `,
 };
@@ -151,28 +169,65 @@ function getBearingDirection(deg) {
   return directions[index];
 }
 
-// Generate smooth multi-waypoint path
-function generateRoutePoints(start, end, intermediate = [], steps = 80) {
+// Catmull-Rom Spline point interpolation for smooth curved paths
+function interpolateCatmullRom(p0, p1, p2, p3, t) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  const lat =
+    0.5 *
+    (2 * p1[0] +
+      (-p0[0] + p2[0]) * t +
+      (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+      (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+
+  const lon =
+    0.5 *
+    (2 * p1[1] +
+      (-p0[1] + p2[1]) * t +
+      (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+      (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+
+  return [lat, lon];
+}
+
+// Generate smooth multi-waypoint path with curve smoothing
+function generateSmoothRoutePoints(start, end, intermediate = [], totalSteps = 140) {
   const allWaypoints = [start, ...intermediate, end];
-  const fullPath = [];
+  if (allWaypoints.length === 2) {
+    // Gentle arc for direct routes
+    const p1 = allWaypoints[0];
+    const p2 = allWaypoints[1];
+    const midLat = (p1[0] + p2[0]) / 2 + (p2[1] - p1[1]) * 0.08;
+    const midLon = (p1[1] + p2[1]) / 2 - (p2[0] - p1[0]) * 0.08;
+    allWaypoints.splice(1, 0, [midLat, midLon]);
+  }
 
-  for (let s = 0; s < allWaypoints.length - 1; s++) {
-    const p1 = allWaypoints[s];
-    const p2 = allWaypoints[s + 1];
-    const segmentSteps = Math.max(20, Math.floor(steps / (allWaypoints.length - 1)));
+  const extended = [allWaypoints[0], ...allWaypoints, allWaypoints[allWaypoints.length - 1]];
+  const path = [];
+  const segments = extended.length - 3;
+  const stepsPerSegment = Math.max(15, Math.floor(totalSteps / segments));
 
-    for (let i = 0; i <= segmentSteps; i++) {
-      const f = i / segmentSteps;
-      const lat = p1[0] + (p2[0] - p1[0]) * f;
-      const lon = p1[1] + (p2[1] - p1[1]) * f;
-      fullPath.push([lat, lon]);
+  for (let i = 0; i < segments; i++) {
+    const p0 = extended[i];
+    const p1 = extended[i + 1];
+    const p2 = extended[i + 2];
+    const p3 = extended[i + 3];
+
+    for (let s = 0; s <= stepsPerSegment; s++) {
+      const t = s / stepsPerSegment;
+      path.push(interpolateCatmullRom(p0, p1, p2, p3, t));
     }
   }
-  return fullPath;
+
+  return path;
 }
 
 export default function ThreeDTrackMap({
-  activeShipment = {
+  activeShipment,
+  shipment,
+}) {
+  const currentShipment = activeShipment || shipment || {
     senderCity: "Hamburg",
     receiverCity: "London",
     currentLocation: "Frankfurt Hub",
@@ -181,14 +236,16 @@ export default function ThreeDTrackMap({
     status: "In Transit",
     category: "Electronics",
     timeline: [],
-  },
-}) {
+  };
+
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const courierMarkerRef = useRef(null);
   const traveledPolylineRef = useRef(null);
   const remainingPolylineRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const smoothedBearingRef = useRef(0);
+  const lastPanTimeRef = useRef(0);
 
   // Map Controls State
   const [currentLayer, setCurrentLayer] = useState("dark");
@@ -200,12 +257,12 @@ export default function ThreeDTrackMap({
   // Transport Mode Selection: "auto", "flight", "ship", "truck", "van"
   const [selectedTransportMode, setSelectedTransportMode] = useState("auto");
 
-  // Determine active transport mode based on speed/category or user override
+  // Determine active transport mode
   const currentMode = useMemo(() => {
     if (selectedTransportMode !== "auto") return selectedTransportMode;
 
-    const speed = activeShipment.speed?.toLowerCase() || "";
-    const cat = activeShipment.category?.toLowerCase() || "";
+    const speed = currentShipment.speed?.toLowerCase() || "";
+    const cat = currentShipment.category?.toLowerCase() || "";
 
     if (speed.includes("ocean") || speed.includes("sea") || cat.includes("sea") || cat.includes("heavy")) {
       return "ship";
@@ -217,7 +274,7 @@ export default function ThreeDTrackMap({
       return "van";
     }
     return "truck";
-  }, [selectedTransportMode, activeShipment]);
+  }, [selectedTransportMode, currentShipment]);
 
   // Live Telemetry Readout
   const [telemetry, setTelemetry] = useState({
@@ -249,7 +306,6 @@ export default function ThreeDTrackMap({
       return [ACCURATE_COORDINATES[matchedKey].lat, ACCURATE_COORDINATES[matchedKey].lon];
     }
 
-    // Deterministic fallback coordinates for any arbitrary city name
     let hash = 0;
     for (let i = 0; i < clean.length; i++) {
       hash = clean.charCodeAt(i) + ((hash << 5) - hash);
@@ -260,38 +316,38 @@ export default function ThreeDTrackMap({
   };
 
   const originCoord = useMemo(
-    () => getCityCoordinate(activeShipment.senderCity || "Hamburg"),
-    [activeShipment.senderCity]
+    () => getCityCoordinate(currentShipment.senderCity || "Hamburg"),
+    [currentShipment.senderCity]
   );
   const destCoord = useMemo(
-    () => getCityCoordinate(activeShipment.receiverCity || "London"),
-    [activeShipment.receiverCity]
+    () => getCityCoordinate(currentShipment.receiverCity || "London"),
+    [currentShipment.receiverCity]
   );
 
   const intermediateCoords = useMemo(() => {
     const list = [];
-    if (activeShipment.timeline && activeShipment.timeline.length > 0) {
-      activeShipment.timeline.forEach((item) => {
+    if (currentShipment.timeline && currentShipment.timeline.length > 0) {
+      currentShipment.timeline.forEach((item) => {
         if (
           item.location &&
-          !item.location.toLowerCase().includes(activeShipment.senderCity?.toLowerCase() || "") &&
-          !item.location.toLowerCase().includes(activeShipment.receiverCity?.toLowerCase() || "")
+          !item.location.toLowerCase().includes(currentShipment.senderCity?.toLowerCase() || "") &&
+          !item.location.toLowerCase().includes(currentShipment.receiverCity?.toLowerCase() || "")
         ) {
           list.push(getCityCoordinate(item.location));
         }
       });
     } else if (
-      activeShipment.currentLocation &&
-      !activeShipment.currentLocation.toLowerCase().includes(activeShipment.senderCity?.toLowerCase() || "") &&
-      !activeShipment.currentLocation.toLowerCase().includes(activeShipment.receiverCity?.toLowerCase() || "")
+      currentShipment.currentLocation &&
+      !currentShipment.currentLocation.toLowerCase().includes(currentShipment.senderCity?.toLowerCase() || "") &&
+      !currentShipment.currentLocation.toLowerCase().includes(currentShipment.receiverCity?.toLowerCase() || "")
     ) {
-      list.push(getCityCoordinate(activeShipment.currentLocation));
+      list.push(getCityCoordinate(currentShipment.currentLocation));
     }
     return list;
-  }, [activeShipment]);
+  }, [currentShipment]);
 
   const routePoints = useMemo(
-    () => generateRoutePoints(originCoord, destCoord, intermediateCoords, 90),
+    () => generateSmoothRoutePoints(originCoord, destCoord, intermediateCoords, 140),
     [originCoord, destCoord, intermediateCoords]
   );
 
@@ -308,37 +364,26 @@ export default function ThreeDTrackMap({
     return Math.round(total);
   }, [routePoints]);
 
-  // Create High-Definition Vehicle Marker HTML
-  const createVehicleMarkerHtml = (mode, bearing = 0) => {
+  // Create Non-Jittering Vehicle Marker HTML
+  const createVehicleMarkerHtml = (mode) => {
     const svgCode = VEHICLE_SVGS[mode] || VEHICLE_SVGS.flight;
     const isFlight = mode === "flight";
     const isShip = mode === "ship";
     const isTruck = mode === "truck";
 
     const badgeColor = isFlight
-      ? "bg-sky-950/90 border-sky-400 shadow-sky-500/40"
+      ? "background: rgba(8, 47, 73, 0.95); border: 2px solid #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);"
       : isShip
-      ? "bg-cyan-950/90 border-cyan-400 shadow-cyan-500/40"
-      : isTruck
-      ? "bg-amber-950/90 border-amber-400 shadow-amber-500/40"
-      : "bg-emerald-950/90 border-emerald-400 shadow-emerald-500/40";
+      ? "background: rgba(22, 78, 99, 0.95); border: 2px solid #22d3ee; box-shadow: 0 0 15px rgba(34, 211, 238, 0.5);"
+      : "background: rgba(69, 26, 3, 0.95); border: 2px solid #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);";
 
     return `
-      <div class="relative flex items-center justify-center w-12 h-12">
-        <!-- Outer Radar Pulse Wave -->
-        <span class="absolute w-12 h-12 rounded-full ${isFlight ? "bg-sky-400/20" : isShip ? "bg-cyan-400/20" : "bg-amber-400/20"} animate-ping"></span>
-        
-        <!-- Center Circular Carrier Pod -->
-        <div class="relative w-10 h-10 rounded-full ${badgeColor} border-2 backdrop-blur-md shadow-2xl flex items-center justify-center cursor-pointer transition-transform duration-100 hover:scale-125">
-          <!-- Directionally Rotated Vehicle Icon -->
-          <div id="carrier-icon-rotor" style="transform: rotate(${bearing}deg); transition: transform 0.15s ease-out;" class="flex items-center justify-center">
+      <div class="carrier-vehicle-wrapper" style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; pointer-events: auto;">
+        <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: ${isFlight ? "rgba(56, 189, 248, 0.2)" : isShip ? "rgba(34, 211, 238, 0.2)" : "rgba(251, 191, 36, 0.2)"}; filter: blur(2px);"></div>
+        <div style="position: relative; width: 40px; height: 40px; border-radius: 50%; ${badgeColor} backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div id="carrier-icon-rotor" style="transform: rotate(0deg); transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1); display: flex; align-items: center; justify-content: center;">
             ${svgCode}
           </div>
-        </div>
-
-        <!-- Forward Heading Arrow Pointer -->
-        <div style="transform: rotate(${bearing}deg); pointer-events: none;" class="absolute w-14 h-14 flex items-start justify-center">
-          <div class="w-2 h-2 ${isFlight ? "bg-sky-400" : isShip ? "bg-cyan-400" : "bg-amber-400"} rotate-45 -mt-1 shadow-sm"></div>
         </div>
       </div>
     `;
@@ -359,6 +404,9 @@ export default function ThreeDTrackMap({
       zoom: 5,
       zoomControl: false,
       attributionControl: false,
+      zoomAnimation: true,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
     });
 
     mapInstanceRef.current = map;
@@ -367,18 +415,17 @@ export default function ThreeDTrackMap({
     const layerConfig = TILE_LAYERS[currentLayer] || TILE_LAYERS.dark;
     tileLayerRef.current = L.tileLayer(layerConfig.url, {
       maxZoom: layerConfig.maxZoom,
-      subdomains: "abcd",
+      className: layerConfig.className || "",
     }).addTo(map);
 
-    // Origin Marker (Amber Radar Ring)
+    // Origin Marker
     const originIcon = L.divIcon({
       className: "custom-map-marker",
       html: `
-        <div class="relative flex items-center justify-center w-8 h-8">
-          <span class="absolute w-8 h-8 rounded-full bg-amber-400/30 animate-ping"></span>
-          <span class="relative w-6 h-6 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 border-2 border-slate-950 shadow-lg flex items-center justify-center text-slate-950 font-black text-[10px]">
+        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #d97706, #f59e0b); border: 2px solid #0f172a; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #020617; font-weight: 900; font-size: 11px;">
             A
-          </span>
+          </div>
         </div>
       `,
       iconSize: [32, 32],
@@ -389,8 +436,8 @@ export default function ThreeDTrackMap({
     originMarker.bindPopup(`
       <div class="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-800 font-sans min-w-[200px]">
         <span class="text-[10px] font-mono text-amber-400 font-black uppercase tracking-wider block">ORIGIN DISPATCH TERMINAL</span>
-        <h4 class="text-sm font-black text-white mt-1">${activeShipment.senderCity}</h4>
-        <p class="text-xs text-slate-300 mt-1">${activeShipment.senderAddress || "Logistics Freight Hub"}</p>
+        <h4 class="text-sm font-black text-white mt-1">${currentShipment.senderCity}</h4>
+        <p class="text-xs text-slate-300 mt-1">${currentShipment.senderAddress || "Logistics Freight Hub"}</p>
         <div class="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400">
           <span>Status: Verified</span>
           <span class="text-amber-400">Departed</span>
@@ -398,15 +445,14 @@ export default function ThreeDTrackMap({
       </div>
     `);
 
-    // Destination Marker (Emerald Radar Ring)
+    // Destination Marker
     const destIcon = L.divIcon({
       className: "custom-map-marker",
       html: `
-        <div class="relative flex items-center justify-center w-8 h-8">
-          <span class="absolute w-8 h-8 rounded-full bg-emerald-400/30 animate-ping"></span>
-          <span class="relative w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 border-2 border-slate-950 shadow-lg flex items-center justify-center text-slate-950 font-black text-[10px]">
+        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #059669, #10b981); border: 2px solid #0f172a; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; color: #020617; font-weight: 900; font-size: 11px;">
             B
-          </span>
+          </div>
         </div>
       `,
       iconSize: [32, 32],
@@ -417,11 +463,11 @@ export default function ThreeDTrackMap({
     destMarker.bindPopup(`
       <div class="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-800 font-sans min-w-[200px]">
         <span class="text-[10px] font-mono text-emerald-400 font-black uppercase tracking-wider block">DESTINATION CONSIGNEE</span>
-        <h4 class="text-sm font-black text-white mt-1">${activeShipment.receiverCity}</h4>
-        <p class="text-xs text-slate-300 mt-1">${activeShipment.receiverAddress || "Receiving Cargo Berth"}</p>
+        <h4 class="text-sm font-black text-white mt-1">${currentShipment.receiverCity}</h4>
+        <p class="text-xs text-slate-300 mt-1">${currentShipment.receiverAddress || "Receiving Cargo Berth"}</p>
         <div class="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400">
           <span>ETA Schedule:</span>
-          <span class="text-emerald-400">${activeShipment.estimatedDelivery || "On Time"}</span>
+          <span class="text-emerald-400">${currentShipment.estimatedDelivery || "On Time"}</span>
         </div>
       </div>
     `);
@@ -431,24 +477,22 @@ export default function ThreeDTrackMap({
       const waypointIcon = L.divIcon({
         className: "custom-map-marker",
         html: `
-          <div class="relative flex items-center justify-center w-6 h-6">
-            <span class="w-3.5 h-3.5 rounded-full bg-purple-500 border-2 border-slate-950 shadow-md"></span>
-          </div>
+          <div style="width: 14px; height: 14px; border-radius: 50%; background: #a855f7; border: 2px solid #020617; box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);"></div>
         `,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
       });
       const wpMarker = L.marker(coord, { icon: waypointIcon }).addTo(map);
       wpMarker.bindPopup(`
         <div class="p-3 bg-slate-900 text-white rounded-xl border border-slate-800 font-sans min-w-[180px]">
           <span class="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">TRANSIT CHECKPOINT #${idx + 1}</span>
-          <h4 class="text-sm font-bold text-white mt-0.5">${activeShipment.currentLocation || "Customs Sorting Yard"}</h4>
-          <p class="text-xs text-slate-400 mt-0.5">Manifest Cleared & Scanned</p>
+          <h4 class="text-sm font-bold text-white mt-0.5">${currentShipment.currentLocation || "Customs Sorting Yard"}</h4>
+          <p class="text-xs text-slate-400 mt-0.5">Manifest Cleared &amp; Scanned</p>
         </div>
       `);
     });
 
-    // Draw Route Polylines
+    // Draw Smooth Polylines
     const initialIndex = Math.floor(progress * (routePoints.length - 1));
     const traveledPoints = routePoints.slice(0, initialIndex + 1);
     const remainingPoints = routePoints.slice(initialIndex);
@@ -457,7 +501,7 @@ export default function ThreeDTrackMap({
       color: "#38bdf8",
       weight: 4,
       opacity: 0.95,
-      smoothFactor: 1,
+      smoothFactor: 1.5,
     }).addTo(map);
 
     remainingPolylineRef.current = L.polyline(remainingPoints, {
@@ -465,16 +509,15 @@ export default function ThreeDTrackMap({
       weight: 3,
       opacity: 0.45,
       dashArray: "6, 8",
-      smoothFactor: 1,
+      smoothFactor: 1.5,
     }).addTo(map);
 
     // Initial Courier Position
     const initialPos = routePoints[initialIndex] || originCoord;
-    const initialBearing = calculateBearing(originCoord[0], originCoord[1], destCoord[0], destCoord[1]);
 
     const courierIcon = L.divIcon({
       className: "custom-courier-marker",
-      html: createVehicleMarkerHtml(currentMode, initialBearing),
+      html: createVehicleMarkerHtml(currentMode),
       iconSize: [48, 48],
       iconAnchor: [24, 24],
     });
@@ -486,14 +529,10 @@ export default function ThreeDTrackMap({
       <div class="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-800 font-sans min-w-[210px]">
         <div class="flex items-center justify-between gap-2">
           <span class="text-[10px] font-mono text-sky-400 font-black uppercase tracking-wider">LIVE CARRIER TELEMETRY</span>
-          <span class="px-2 py-0.5 text-[9px] font-bold bg-sky-500/20 text-sky-300 rounded">${activeShipment.status}</span>
+          <span class="px-2 py-0.5 text-[9px] font-bold bg-sky-500/20 text-sky-300 rounded">${currentShipment.status}</span>
         </div>
-        <h4 class="text-sm font-black text-white mt-1">${activeShipment.id}</h4>
+        <h4 class="text-sm font-black text-white mt-1">${currentShipment.id}</h4>
         <p class="text-xs text-slate-300 mt-0.5 font-medium">Mode: <strong class="uppercase text-sky-400">${currentMode}</strong></p>
-        <div class="mt-2.5 pt-2 border-t border-slate-800 text-[11px] font-mono grid grid-cols-2 gap-1 text-slate-300">
-          <div>Cargo: <strong class="text-amber-300">${activeShipment.category || "General"}</strong></div>
-          <div>Speed: <strong class="text-emerald-300">${telemetry.speed}</strong></div>
-        </div>
       </div>
     `);
 
@@ -507,7 +546,7 @@ export default function ThreeDTrackMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [activeShipment.id, originCoord, destCoord, intermediateCoords]);
+  }, [currentShipment.id, originCoord, destCoord, intermediateCoords]);
 
   // Update Tile Layer on Change
   useEffect(() => {
@@ -519,57 +558,62 @@ export default function ThreeDTrackMap({
     const layerConfig = TILE_LAYERS[currentLayer] || TILE_LAYERS.dark;
     tileLayerRef.current = L.tileLayer(layerConfig.url, {
       maxZoom: layerConfig.maxZoom,
-      subdomains: "abcd",
+      className: layerConfig.className || "",
     }).addTo(map);
   }, [currentLayer]);
 
-  // Live Animation Loop
+  // Smooth Animation Loop
   useEffect(() => {
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
       setProgress((prev) => {
-        const nextProgress = prev + 0.003 * simSpeed;
+        const nextProgress = prev + 0.0018 * simSpeed;
         if (nextProgress >= 1) return 0;
         return nextProgress;
       });
-    }, 100);
+    }, 50);
 
     return () => clearInterval(interval);
   }, [isPlaying, simSpeed]);
 
-  // Update Vehicle Marker Position, Bearing & Modality
+  // Update Vehicle Marker Position & Smooth Rotation (Without vibrating DOM re-creation)
   useEffect(() => {
     if (!routePoints || routePoints.length === 0 || !courierMarkerRef.current) return;
 
     const totalSteps = routePoints.length - 1;
-    const currentIndex = Math.min(totalSteps, Math.floor(progress * totalSteps));
+    const exactIndex = progress * totalSteps;
+    const currentIndex = Math.min(totalSteps, Math.floor(exactIndex));
     const nextIndex = Math.min(totalSteps, currentIndex + 1);
 
     const currentPos = routePoints[currentIndex];
     const nextPos = routePoints[nextIndex] || currentPos;
 
-    const subProgress = (progress * totalSteps) - currentIndex;
+    const subProgress = exactIndex - currentIndex;
     const interpolatedLat = currentPos[0] + (nextPos[0] - currentPos[0]) * subProgress;
     const interpolatedLon = currentPos[1] + (nextPos[1] - currentPos[1]) * subProgress;
     const liveLatLng = [interpolatedLat, interpolatedLon];
 
     courierMarkerRef.current.setLatLng(liveLatLng);
 
-    // Calculate Bearing
-    const bearingDeg = Math.round(calculateBearing(currentPos[0], currentPos[1], nextPos[0], nextPos[1]));
+    // Calculate Smooth Bearing
+    const lookAheadIndex = Math.min(totalSteps, currentIndex + 3);
+    const lookAheadPos = routePoints[lookAheadIndex] || nextPos;
+    const rawBearing = calculateBearing(interpolatedLat, interpolatedLon, lookAheadPos[0], lookAheadPos[1]);
+
+    // Shortest angular interpolation
+    let diff = (rawBearing - smoothedBearingRef.current) % 360;
+    if (diff < -180) diff += 360;
+    if (diff > 180) diff -= 360;
+    smoothedBearingRef.current = (smoothedBearingRef.current + diff * 0.25 + 360) % 360;
+    const bearingDeg = Math.round(smoothedBearingRef.current);
     const bearingDir = getBearingDirection(bearingDeg);
 
-    // Update Marker HTML with current vehicle icon and bearing rotation
-    const updatedIcon = L.divIcon({
-      className: "custom-courier-marker",
-      html: createVehicleMarkerHtml(currentMode, bearingDeg),
-      iconSize: [48, 48],
-      iconAnchor: [24, 24],
-    });
-    courierMarkerRef.current.setIcon(updatedIcon);
+    const iconElement = document.getElementById("carrier-icon-rotor");
+    if (iconElement) {
+      iconElement.style.transform = `rotate(${bearingDeg}deg)`;
+    }
 
-    // Update Polylines
     if (traveledPolylineRef.current && remainingPolylineRef.current) {
       const traveled = [...routePoints.slice(0, currentIndex + 1), liveLatLng];
       const remaining = [liveLatLng, ...routePoints.slice(nextIndex)];
@@ -577,34 +621,37 @@ export default function ThreeDTrackMap({
       remainingPolylineRef.current.setLatLngs(remaining);
     }
 
-    // Auto Follow Courier
-    if (followCourier && mapInstanceRef.current) {
-      mapInstanceRef.current.panTo(liveLatLng, { animate: true, duration: 0.15 });
+    // Smooth Throttle Auto-Follow
+    const now = Date.now();
+    if (followCourier && mapInstanceRef.current && now - lastPanTimeRef.current > 1500) {
+      const map = mapInstanceRef.current;
+      const bounds = map.getBounds();
+      if (!bounds.pad(-0.25).contains(liveLatLng)) {
+        map.panTo(liveLatLng, { animate: true, duration: 0.8, easeLinearity: 0.5 });
+        lastPanTimeRef.current = now;
+      }
     }
 
-    // Calculate Distance Remaining
     const distRemainingKm = Math.round(
       calculateDistance(interpolatedLat, interpolatedLon, destCoord[0], destCoord[1])
     );
 
-    // Calculate Speed and Altitude according to Mode
     let liveSpeed = 0;
     let liveAlt = 0;
 
-    if (activeShipment.status === "In Transit") {
+    if (currentShipment.status === "In Transit") {
       if (currentMode === "flight") {
         liveAlt = Math.round(Math.sin(progress * Math.PI) * 10450);
-        liveSpeed = Math.round(760 + Math.sin(progress * 10) * 45);
+        liveSpeed = Math.round(760 + Math.sin(progress * 10) * 25);
       } else if (currentMode === "ship") {
-        liveAlt = 0; // Sea Level
-        liveSpeed = Math.round(42 + Math.sin(progress * 10) * 6); // ~23 knots
+        liveAlt = 0;
+        liveSpeed = Math.round(42 + Math.sin(progress * 10) * 4);
       } else if (currentMode === "truck") {
-        liveAlt = Math.round(180 + Math.sin(progress * 15) * 60);
-        liveSpeed = Math.round(88 + Math.sin(progress * 10) * 12);
+        liveAlt = Math.round(180 + Math.sin(progress * 15) * 40);
+        liveSpeed = Math.round(88 + Math.sin(progress * 10) * 8);
       } else {
-        // Van
         liveAlt = 45;
-        liveSpeed = Math.round(55 + Math.sin(progress * 10) * 15);
+        liveSpeed = Math.round(55 + Math.sin(progress * 10) * 10);
       }
     }
 
@@ -622,12 +669,12 @@ export default function ThreeDTrackMap({
       etaMinutes: remainingEtaMins,
       currentLocationName:
         progress < 0.2
-          ? `Departed ${activeShipment.senderCity}`
+          ? `Departed ${currentShipment.senderCity}`
           : progress > 0.85
-          ? `Approaching ${activeShipment.receiverCity}`
-          : activeShipment.currentLocation || "Cruising Navigation Corridor",
+          ? `Approaching ${currentShipment.receiverCity}`
+          : currentShipment.currentLocation || "Cruising Navigation Corridor",
     });
-  }, [progress, routePoints, destCoord, followCourier, activeShipment, totalRouteDistKm, currentMode]);
+  }, [progress, routePoints, destCoord, followCourier, currentShipment, totalRouteDistKm, currentMode]);
 
   // Recenter & Zoom Handlers
   const handleRecenter = () => {
@@ -660,32 +707,32 @@ export default function ThreeDTrackMap({
               : "bg-amber-500/20 text-amber-400 border border-amber-500/40"
           }`}>
             {currentMode === "flight" ? (
-              <Plane className="h-5 w-5 animate-pulse" />
+              <Plane className="h-5 w-5" />
             ) : currentMode === "ship" ? (
-              <Ship className="h-5 w-5 animate-pulse" />
+              <Ship className="h-5 w-5" />
             ) : (
-              <Truck className="h-5 w-5 animate-pulse" />
+              <Truck className="h-5 w-5" />
             )}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-black text-sky-400">
-                WAYBILL: {activeShipment.id}
+                WAYBILL: {currentShipment.id}
               </span>
               <span
                 className={`px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full ${
-                  activeShipment.status === "In Transit"
+                  currentShipment.status === "In Transit"
                     ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
-                    : activeShipment.status === "Delivered"
+                    : currentShipment.status === "Delivered"
                     ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                     : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
                 }`}
               >
-                {activeShipment.status}
+                {currentShipment.status}
               </span>
             </div>
             <div className="text-xs text-slate-200 font-bold mt-0.5">
-              {activeShipment.senderCity} ➔ {activeShipment.receiverCity}
+              {currentShipment.senderCity} ➔ {currentShipment.receiverCity}
             </div>
           </div>
         </div>
@@ -706,6 +753,20 @@ export default function ThreeDTrackMap({
             >
               <Plane className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Flight</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTransportMode("two-wheeler")}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                currentMode === "two-wheeler"
+                  ? "bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+              title="Doorstep Two-Wheeler EV / Bike"
+            >
+              <span>🛵</span>
+              <span className="hidden sm:inline">2-Wheeler</span>
             </button>
 
             <button
@@ -744,9 +805,9 @@ export default function ThreeDTrackMap({
                 key={key}
                 type="button"
                 onClick={() => setCurrentLayer(key)}
-                className={`px-2 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   currentLayer === key
-                    ? "bg-slate-800 text-white font-extrabold"
+                    ? "bg-sky-500 text-slate-950 font-black shadow-md shadow-sky-500/20"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
@@ -798,6 +859,7 @@ export default function ThreeDTrackMap({
               type="button"
               onClick={handleZoomIn}
               className="p-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+              title="Zoom In"
             >
               <ZoomIn className="h-4 w-4" />
             </button>
@@ -805,6 +867,7 @@ export default function ThreeDTrackMap({
               type="button"
               onClick={handleZoomOut}
               className="p-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+              title="Zoom Out"
             >
               <ZoomOut className="h-4 w-4" />
             </button>
@@ -812,69 +875,71 @@ export default function ThreeDTrackMap({
         </div>
       </div>
 
-      {/* Live Leaflet Map Container */}
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
+      {/* Leaflet Map Canvas Container */}
+      <div ref={mapContainerRef} className="w-full h-full z-[1] bg-[#050b14]" />
 
-      {/* Route Progress Slider Bar */}
-      <div className="absolute bottom-20 left-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-700/70 flex items-center gap-3 pointer-events-auto">
-        <span className="text-[10px] font-mono font-bold text-sky-400 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
-          {currentMode === "flight" ? <Plane className="h-3.5 w-3.5" /> : currentMode === "ship" ? <Ship className="h-3.5 w-3.5" /> : <Truck className="h-3.5 w-3.5" />}
-          Progress: {Math.round(progress * 100)}%
-        </span>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.001"
-          value={progress}
-          onChange={(e) => {
-            setProgress(parseFloat(e.target.value));
-            setIsPlaying(false);
-          }}
-          className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
-        />
-        <div className="flex items-center gap-1 shrink-0 text-[10px] font-mono text-slate-400 font-bold">
-          <Clock className="h-3.5 w-3.5 text-amber-400" />
-          <span>Rem: {telemetry.distanceRemaining}</span>
-        </div>
-      </div>
-
-      {/* Bottom Telemetry HUD Matrix */}
-      <div className="absolute bottom-3 left-4 right-4 z-[400] grid grid-cols-2 md:grid-cols-5 gap-2.5 bg-slate-900/95 backdrop-blur-xl p-3 rounded-2xl border border-slate-700/80 shadow-2xl pointer-events-auto">
-        <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl">
-          <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-            <MapPin className="h-3 w-3 text-sky-400" /> GPS Latitude
+      {/* Bottom Telemetry HUD */}
+      <div className="absolute bottom-4 left-4 right-4 z-[400] bg-slate-900/95 backdrop-blur-xl p-4 rounded-2xl border border-slate-700/80 shadow-2xl font-sans">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
+          <div className="space-y-0.5">
+            <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">COORDINATES</span>
+            <span className="font-mono font-bold text-white block">{telemetry.lat}</span>
+            <span className="font-mono text-[11px] text-slate-400">{telemetry.lon}</span>
           </div>
-          <div className="text-sm font-mono font-black text-sky-300 mt-0.5 truncate">{telemetry.lat}</div>
-        </div>
 
-        <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl">
-          <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-            <MapPin className="h-3 w-3 text-amber-400" /> GPS Longitude
+          <div className="space-y-0.5">
+            <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">VELOCITY &amp; ALTITUDE</span>
+            <span className="font-mono font-bold text-emerald-400 block">{telemetry.speed}</span>
+            <span className="font-mono text-[11px] text-slate-400">Alt: {telemetry.alt}</span>
           </div>
-          <div className="text-sm font-mono font-black text-amber-300 mt-0.5 truncate">{telemetry.lon}</div>
-        </div>
 
-        <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl">
-          <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-            {currentMode === "flight" ? <Wind className="h-3 w-3 text-emerald-400" /> : currentMode === "ship" ? <Anchor className="h-3 w-3 text-cyan-400" /> : <Navigation className="h-3 w-3 text-emerald-400" />} 
-            {currentMode === "ship" ? "Depth / Draft" : "Altitude"}
+          <div className="space-y-0.5">
+            <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">HEADING / BEARING</span>
+            <span className="font-mono font-bold text-sky-400 block">{telemetry.bearing}</span>
+            <span className="font-mono text-[11px] text-slate-400">Mode: {currentMode.toUpperCase()}</span>
           </div>
-          <div className="text-sm font-mono font-black text-emerald-300 mt-0.5 truncate">{telemetry.alt}</div>
+
+          <div className="space-y-0.5">
+            <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">DISTANCE REMAINING</span>
+            <span className="font-mono font-bold text-amber-400 block">{telemetry.distanceRemaining}</span>
+            <span className="font-mono text-[11px] text-slate-400">Total: {telemetry.totalDistance}</span>
+          </div>
+
+          <div className="space-y-0.5">
+            <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">ESTIMATED ARRIVAL</span>
+            <span className="font-mono font-bold text-purple-400 block">
+              {telemetry.etaMinutes > 0 ? `~${telemetry.etaMinutes} mins` : "Approaching Terminal"}
+            </span>
+            <span className="font-mono text-[11px] text-slate-400">Target: {currentShipment.estimatedDelivery}</span>
+          </div>
+
+          <div className="space-y-0.5">
+            <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">CURRENT CHECKPOINT</span>
+            <span className="font-bold text-white block truncate">{telemetry.currentLocationName}</span>
+            <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> GPS Synchronized
+            </span>
+          </div>
         </div>
 
-        <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl">
-          <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-            <Activity className="h-3 w-3 text-purple-400" /> Live Velocity
-          </div>
-          <div className="text-sm font-mono font-black text-purple-300 mt-0.5 truncate">{telemetry.speed}</div>
-        </div>
-
-        <div className="col-span-2 md:col-span-1 bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl">
-          <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-            <Compass className="h-3 w-3 text-cyan-400" /> Trajectory Heading
-          </div>
-          <div className="text-sm font-mono font-black text-cyan-300 mt-0.5 truncate">{telemetry.bearing}</div>
+        {/* Progress Slider */}
+        <div className="mt-3 pt-3 border-t border-slate-800 flex items-center gap-3">
+          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase shrink-0">TRANSIT PROGRESS</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.001"
+            value={progress}
+            onChange={(e) => {
+              setProgress(parseFloat(e.target.value));
+              setIsPlaying(false);
+            }}
+            className="w-full accent-sky-400 cursor-pointer h-1.5 bg-slate-950 rounded-lg"
+          />
+          <span className="text-xs font-mono font-bold text-sky-400 shrink-0">
+            {Math.round(progress * 100)}%
+          </span>
         </div>
       </div>
     </div>

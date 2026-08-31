@@ -1,5 +1,21 @@
 import React, { useState } from "react";
-import { Search, Menu, Bell, HelpCircle, Clock, Zap, Sun, Moon, Palette } from "lucide-react";
+import {
+  Search,
+  Menu,
+  Bell,
+  HelpCircle,
+  Clock,
+  Zap,
+  Sun,
+  Moon,
+  Palette,
+  ShieldCheck,
+  Truck,
+  User,
+  ChevronDown,
+  Sparkles,
+} from "lucide-react";
+import { ROLES, INITIAL_USERS } from "../data/mockData";
 
 export default function Header({
   title,
@@ -9,9 +25,13 @@ export default function Header({
   user,
   theme,
   onToggleTheme,
+  onSwitchRole,
 }) {
   const [searchVal, setSearchVal] = useState("");
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showRoleMenu, setShowRoleMenu] = useState(false);
+
+  const systemRole = user?.systemRole || ROLES.USER;
 
   const getInitials = (name) => {
     if (!name) return "SK";
@@ -52,7 +72,7 @@ export default function Header({
   return (
     <header
       id="app-header"
-      className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-4 md:px-8 shadow-2xl"
+      className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-4 md:px-8 shadow-2xl font-sans"
     >
       {/* Left side: Mobile Hamburger and Title */}
       <div className="flex items-center gap-4">
@@ -64,16 +84,143 @@ export default function Header({
               sidebar.classList.toggle("-translate-x-full");
             }
           }}
-          className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 md:hidden"
+          className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 md:hidden cursor-pointer"
           aria-label="Toggle navigation"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
             {title}
           </h1>
+
+          {/* Active Role Badge with Switcher Trigger */}
+          <div className="relative">
+            <button
+              onClick={() => setShowRoleMenu(!showRoleMenu)}
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition cursor-pointer ${
+                systemRole === ROLES.ADMIN
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
+                  : systemRole === ROLES.STAFF
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30"
+                  : "bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30"
+              }`}
+              title="Click to quickly switch roles"
+            >
+              {systemRole === ROLES.ADMIN ? (
+                <>
+                  <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                  <span>Admin Mode</span>
+                </>
+              ) : systemRole === ROLES.STAFF ? (
+                <>
+                  <Truck className="h-3 w-3 text-amber-400" />
+                  <span>Staff Mode</span>
+                </>
+              ) : (
+                <>
+                  <User className="h-3 w-3 text-sky-400" />
+                  <span>Customer Mode</span>
+                </>
+              )}
+              <ChevronDown className="h-3 w-3 ml-0.5 opacity-70" />
+            </button>
+
+            {showRoleMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowRoleMenu(false)}></div>
+                <div className="absolute left-0 top-full mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in p-2 space-y-1">
+                  <div className="px-3 py-2 border-b border-slate-800 flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Switch Role Terminal
+                    </span>
+                    <Sparkles className="h-3 w-3 text-amber-400" />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      onSwitchRole(ROLES.ADMIN);
+                      setShowRoleMenu(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                      systemRole === ROLES.ADMIN
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                        : "text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    <div className="h-6 w-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                      👑
+                    </div>
+                    <div>
+                      <span className="block font-black text-white">Administrator</span>
+                      <span className="text-[10px] text-slate-400">P&amp;L Calculator, Fuel &amp; Payroll</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSwitchRole(ROLES.STAFF);
+                      setShowRoleMenu(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                      systemRole === ROLES.STAFF
+                        ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                        : "text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    <div className="h-6 w-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                      👷
+                    </div>
+                    <div>
+                      <span className="block font-black text-white">Operations Staff</span>
+                      <span className="text-[10px] text-slate-400">Parcel Audit &amp; Dispatch CRUD</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSwitchRole(ROLES.WORKER);
+                      setShowRoleMenu(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                      systemRole === ROLES.WORKER
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                        : "text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    <div className="h-6 w-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                      🛵
+                    </div>
+                    <div>
+                      <span className="block font-black text-white">Field Delivery Worker</span>
+                      <span className="text-[10px] text-slate-400">Two-Wheeler &amp; Doorstep Runs</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSwitchRole(ROLES.USER);
+                      setShowRoleMenu(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                      systemRole === ROLES.USER
+                        ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
+                        : "text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    <div className="h-6 w-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                      👤
+                    </div>
+                    <div>
+                      <span className="block font-black text-white">Customer User</span>
+                      <span className="text-[10px] text-slate-400">3D Booking &amp; Live Tracking</span>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -192,7 +339,13 @@ export default function Header({
           onClick={() => onNavigate("profile")}
           className="flex items-center gap-2 pl-2 border-l border-slate-800 cursor-pointer"
         >
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 text-white flex items-center justify-center font-extrabold text-xs border border-sky-400/40 shadow-lg shadow-sky-500/20">
+          <div className={`h-9 w-9 rounded-xl text-white flex items-center justify-center font-extrabold text-xs border shadow-lg ${
+            systemRole === ROLES.ADMIN
+              ? "bg-gradient-to-tr from-emerald-600 to-teal-500 border-emerald-400/40 shadow-emerald-500/20"
+              : systemRole === ROLES.STAFF
+              ? "bg-gradient-to-tr from-amber-600 to-orange-500 border-amber-400/40 shadow-amber-500/20"
+              : "bg-gradient-to-tr from-sky-600 to-blue-500 border-sky-400/40 shadow-sky-500/20"
+          }`}>
             {initials}
           </div>
         </button>

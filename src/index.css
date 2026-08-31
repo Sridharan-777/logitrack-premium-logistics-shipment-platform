@@ -430,11 +430,21 @@ select option {
   transition-timing-function: ease;
 }
 
-/* Override for animations that need different transition */
-.animate-ping, .animate-spin, .animate-pulse, .animate-bounce {
-  transition: none !important;
+/* ============================================================
+   CYBER DARK MAP TILE STYLING
+   ============================================================ */
+.cyber-dark-tiles {
+  filter: brightness(0.7) contrast(1.4) hue-rotate(195deg) saturate(1.6) !important;
+  background-color: #030712 !important;
 }
 
-input, textarea, select, button {
-  transition: all 0.2s ease !important;
+.cyber-ocean-tiles {
+  filter: brightness(0.6) contrast(1.3) hue-rotate(180deg) !important;
+  background-color: #020617 !important;
 }
+
+.leaflet-container {
+  background-color: #020617 !important;
+}
+
+
