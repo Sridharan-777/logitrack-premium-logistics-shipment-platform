@@ -32,12 +32,21 @@ import {
 } from "lucide-react";
 import ThreeDCard from "./ThreeDCard";
 
-export default function ProfileView({
-  profile,
-  onUpdateProfile,
-  onAddAddress,
-  onDeleteAddress,
-}) {
+export default function ProfileView({ user, onUpdateUser, onNavigate }) {
+  // Alias user as profile so all existing references below work unchanged
+  const profile = user || {};
+
+  // Derived address helpers
+  const onUpdateProfile = (updated) => onUpdateUser && onUpdateUser(updated);
+  const onAddAddress = (newAddr) => {
+    const existing = profile.addresses || [];
+    onUpdateUser && onUpdateUser({ addresses: [...existing, newAddr] });
+  };
+  const onDeleteAddress = (addrId) => {
+    const existing = profile.addresses || [];
+    onUpdateUser && onUpdateUser({ addresses: existing.filter((a) => a.id !== addrId) });
+  };
+
   // Edit mode toggle
   const [isEditing, setIsEditing] = useState(false);
 
@@ -728,7 +737,7 @@ export default function ProfileView({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {profile.addresses.map((addr) => (
+            {(profile.addresses || []).map((addr) => (
               <div
                 key={addr.id}
                 className="p-4 bg-slate-950/40 border border-slate-800 rounded-2xl space-y-3 hover:border-sky-500/30 transition group"
