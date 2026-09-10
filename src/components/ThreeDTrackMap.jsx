@@ -23,6 +23,7 @@ const CITY_DB = {
   Frankfurt:     { lat:50.1109, lon:8.6821,   label:"Frankfurt",      region:"north_europe",   airportCoord:[50.03,8.57], isAirport:true, nearestPort:"Hamburg" },
   Berlin:        { lat:52.5200, lon:13.4050,  label:"Berlin",         region:"north_europe",   airportCoord:[52.35,13.49],isAirport:true, nearestPort:"Hamburg" },
   Munich:        { lat:48.1351, lon:11.5820,  label:"Munich",         region:"north_europe",   airportCoord:[48.36,11.79],isAirport:true, nearestPort:"Hamburg" },
+  Nuremberg:     { lat:49.4521, lon:11.0767,  label:"Nuremberg",      region:"north_europe",   nearestPort:"Hamburg", nearestAirport:"Munich" },
   London:        { lat:51.5074, lon:-0.1278,  label:"London",         region:"north_europe",   portCoord:[51.50,0.62],   airportCoord:[51.48,-0.46], isPort:true, isAirport:true },
   Paris:         { lat:48.8566, lon:2.3522,   label:"Paris",          region:"north_europe",   airportCoord:[49.01,2.55], isAirport:true, nearestPort:"Rotterdam" },
   Amsterdam:     { lat:52.3676, lon:4.9041,   label:"Amsterdam",      region:"north_europe",   airportCoord:[52.31,4.77], isAirport:true, nearestPort:"Rotterdam" },
@@ -306,11 +307,54 @@ function buildRoad(oName, dName, mode) {
   const o=findCity(oName), d=findCity(dName);
   if(!o||!d) return null;
   const oC=[o.lat,o.lon], dC=[d.lat,d.lon];
-  const mLat=(oC[0]+dC[0])/2+(dC[1]-oC[1])*.05, mLon=(oC[1]+dC[1])/2-(dC[0]-oC[0])*.05;
-  const label=mode==="two-wheeler"?"Motorcycle Courier":mode==="van"?"Van Delivery":"Road Freight";
-  const color=mode==="van"?RC.van:mode==="two-wheeler"?RC.lastMile:RC.road;
-  const speed=mode==="two-wheeler"?55:mode==="van"?70:90;
-  return { phases:[{ label, vehicleType:mode, color, points:smooth([oC,[mLat,mLon],dC],40), altFn:t=>80+Math.sin(t*Math.PI*3)*12, speedKmh:speed }]};
+  const dist = haversine(oC[0],oC[1],dC[0],dC[1]);
+
+  if (mode === "two-wheeler") {
+    // Two-wheelers: short urban/suburban routes, max ~100km
+    // Add subtle city-street-like waypoints
+    const jitter = Math.min(0.03, dist * 0.00003);
+    const mid1 = [oC[0] + (dC[0]-oC[0])*0.3 + jitter, oC[1] + (dC[1]-oC[1])*0.3 - jitter*0.5];
+    const mid2 = [oC[0] + (dC[0]-oC[0])*0.6 - jitter*0.7, oC[1] + (dC[1]-oC[1])*0.6 + jitter*0.8];
+    const mid3 = [oC[0] + (dC[0]-oC[0])*0.85 + jitter*0.3, oC[1] + (dC[1]-oC[1])*0.85 - jitter*0.4];
+    return { phases:[
+      { label:"Two-Wheeler Pickup", vehicleType:"two-wheeler", color:RC.lastMile, points:smooth([oC,mid1],15), altFn:()=>0, speedKmh:35 },
+      { label:"Street Transit", vehicleType:"two-wheeler", color:RC.lastMile, points:smooth([mid1,mid2,mid3],20), altFn:t=>2+Math.sin(t*Math.PI*4)*3, speedKmh:45 },
+      { label:"Doorstep Delivery", vehicleType:"two-wheeler", color:RC.lastMile, points:smooth([mid3,dC],15), altFn:()=>0, speedKmh:30 },
+    ]};
+  }
+
+  if (mode === "van") {
+    // Van: suburban/city deliveries, up to ~200km
+    const mLat=(oC[0]+dC[0])/2+(dC[1]-oC[1])*.04;
+    const mLon=(oC[1]+dC[1])/2-(dC[0]-oC[0])*.04;
+    return { phases:[
+      { label:"Van Loading", vehicleType:"van", color:RC.van, points:smooth([oC,[oC[0]+0.005,oC[1]+0.003]],8), altFn:()=>0, speedKmh:15 },
+      { label:"Van Transit", vehicleType:"van", color:RC.van, points:smooth([oC,[mLat,mLon],dC],30), altFn:t=>5+Math.sin(t*Math.PI*3)*8, speedKmh:60 },
+      { label:"Van Delivery", vehicleType:"van", color:RC.van, points:smooth([[dC[0]+0.008,dC[1]-0.005],dC],8), altFn:()=>0, speedKmh:20 },
+    ]};
+  }
+
+  // Truck: long-distance highway freight
+  // Generate highway-like waypoints with gentle curves
+  const numWaypoints = Math.max(3, Math.min(8, Math.floor(dist / 80)));
+  const waypoints = [oC];
+  for (let i = 1; i < numWaypoints; i++) {
+    const t = i / numWaypoints;
+    const baseLat = oC[0] + (dC[0]-oC[0]) * t;
+    const baseLon = oC[1] + (dC[1]-oC[1]) * t;
+    // Gentle highway curves
+    const offset = Math.sin(t * Math.PI) * (dist > 300 ? 0.3 : 0.1);
+    const perpLat = -(dC[1]-oC[1]) / (dist * 0.01) * offset;
+    const perpLon = (dC[0]-oC[0]) / (dist * 0.01) * offset;
+    waypoints.push([baseLat + perpLat, baseLon + perpLon]);
+  }
+  waypoints.push(dC);
+
+  return { phases:[
+    { label:"Warehouse Loading", vehicleType:"truck", color:RC.road, points:smooth([oC,[oC[0]+0.01,oC[1]+0.005]],8), altFn:()=>0, speedKmh:15 },
+    { label:"Highway Freight", vehicleType:"truck", color:RC.road, points:smooth(waypoints,35), altFn:t=>50+Math.sin(t*Math.PI*5)*30, speedKmh:85 },
+    { label:"Destination Unload", vehicleType:"truck", color:RC.road, points:smooth([[dC[0]-0.01,dC[1]-0.005],dC],8), altFn:()=>0, speedKmh:20 },
+  ]};
 }
 
 function buildJourney(mode, oName, dName) {
@@ -326,6 +370,59 @@ function flattenJourney(journey) {
     (ph.points||[]).forEach((pt,idx)=>{ if(idx===0&&points.length>0)return; points.push(pt); phaseMap.push(pi); });
   });
   return { points, phaseMap, phases:journey.phases };
+}
+
+// ══════════════════════════════════════════════════════════════
+// 7b. REALISTIC TIME CALCULATIONS
+// ══════════════════════════════════════════════════════════════
+// Compute total journey time in hours from distance + speed per phase
+function computeJourneyTimeHours(phases) {
+  let totalHours = 0;
+  for (const ph of phases) {
+    if (!ph.points || ph.points.length < 2) continue;
+    let phaseDist = 0;
+    for (let i = 0; i < ph.points.length - 1; i++) {
+      phaseDist += haversine(ph.points[i][0], ph.points[i][1], ph.points[i+1][0], ph.points[i+1][1]);
+    }
+    const speed = ph.speedKmh || 80;
+    totalHours += phaseDist / speed;
+  }
+  return totalHours;
+}
+
+// Format hours to human-readable string
+function formatETA(hours) {
+  if (hours < 0.017) return "Arriving now";
+  if (hours < 1) return `~${Math.round(hours * 60)} min`;
+  if (hours < 24) {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return m > 0 ? `~${h}h ${m}m` : `~${h}h`;
+  }
+  const days = Math.floor(hours / 24);
+  const remainHrs = Math.round(hours % 24);
+  return remainHrs > 0 ? `~${days}d ${remainHrs}h` : `~${days} days`;
+}
+
+// Compute per-phase weight for animation (longer phases animate slower, proportional to real time)
+function computePhaseWeights(phases) {
+  const weights = [];
+  let totalTime = 0;
+  for (const ph of phases) {
+    if (!ph.points || ph.points.length < 2) { weights.push(0); continue; }
+    let phaseDist = 0;
+    for (let i = 0; i < ph.points.length - 1; i++) {
+      phaseDist += haversine(ph.points[i][0], ph.points[i][1], ph.points[i+1][0], ph.points[i+1][1]);
+    }
+    const timeH = phaseDist / (ph.speedKmh || 80);
+    weights.push(timeH);
+    totalTime += timeH;
+  }
+  // Normalize to [0..1] per phase
+  if (totalTime > 0) {
+    for (let i = 0; i < weights.length; i++) weights[i] /= totalTime;
+  }
+  return weights;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -354,6 +451,13 @@ function deliveredHTML() {
     </div>
   </div>`;
 }
+
+// Small motorcycle icon for phase bar
+const TwoWheelerIcon = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="2">
+    <circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17L9 10L14 10L19 17M9 10L8 6H5"/>
+  </svg>
+);
 
 // ══════════════════════════════════════════════════════════════
 // 9. MAIN COMPONENT
@@ -385,6 +489,8 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
   const phRef       = useRef([]);
   const dCRef       = useRef([0,0]);
   const lastVtRef   = useRef("");
+  const phaseWeightsRef = useRef([]);
+  const totalJourneyHoursRef = useRef(1);
 
   // ── UI state
   const [prog,setProg]           = useState(0.05);
@@ -432,8 +538,21 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
   const dCoord = dCity?[dCity.lat,dCity.lon]:[0,0];
   const totDist = useMemo(()=>{let d=0;for(let i=0;i<points.length-1;i++)d+=haversine(points[i][0],points[i][1],points[i+1][0],points[i+1][1]);return Math.round(d);},[points]);
 
+  // Compute total journey time in hours for realistic ETA
+  const totalJourneyHours = useMemo(() => {
+    if (!phases.length) return 1;
+    return computeJourneyTimeHours(phases);
+  }, [phases]);
+
+  // Phase weights for proportional animation speed
+  const phaseWeights = useMemo(() => computePhaseWeights(phases), [phases]);
+
   // keep animation refs in sync
-  useEffect(()=>{ ptsRef.current=points; pmRef.current=phaseMap; phRef.current=phases; dCRef.current=dCoord; },[points,phaseMap,phases,dCoord]);
+  useEffect(()=>{
+    ptsRef.current=points; pmRef.current=phaseMap; phRef.current=phases; dCRef.current=dCoord;
+    phaseWeightsRef.current=phaseWeights;
+    totalJourneyHoursRef.current=totalJourneyHours;
+  },[points,phaseMap,phases,dCoord,phaseWeights,totalJourneyHours]);
 
   // ── MAP INIT ────────────────────────────────────────────────────
   useEffect(()=>{
@@ -487,11 +606,12 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
     tlRef.current=L.polyline(points.slice(0,iIdx+1),{color:RC.completed,weight:4,opacity:.95}).addTo(map);
     rlRef.current=L.polyline(points.slice(iIdx),{color:RC.remaining,weight:2,opacity:.5,dashArray:"6 8"}).addTo(map);
 
-    // Vehicle marker
+    // Vehicle marker — use correct initial vehicle type
     if(isDelivered) {
       L.marker(dCoord,{icon:L.divIcon({className:"",html:deliveredHTML(),iconSize:[52,52],iconAnchor:[26,26]}),zIndexOffset:1000}).addTo(map);
     } else {
-      const initVt=phases[pmRef.current[iIdx]]?.vehicleType||mode;
+      const initPhaseIdx = pmRef.current[iIdx] || 0;
+      const initVt = phases[initPhaseIdx]?.vehicleType || mode;
       lastVtRef.current=initVt;
       const vm=L.marker(iPt,{icon:L.divIcon({className:"",html:vehicleMarkerHTML(initVt,0),iconSize:[54,54],iconAnchor:[27,27]}),zIndexOffset:1000}).addTo(map);
       vmRef.current=vm;
@@ -509,6 +629,22 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
   },[s.id,journey,locErr]); // eslint-disable-line
 
   // ── ANIMATION ───────────────────────────────────────────────────
+  // Animation speed calibration:
+  // BASE_CYCLE_SECONDS controls how long 1 full journey takes at 1x speed.
+  // This is tuned per mode so that the user sees a meaningful simulation,
+  // not a 3-second jump.
+  const baseCycleSeconds = useMemo(() => {
+    // Scale the animation so short routes feel snappy, long routes feel substantial
+    // but never so slow it's boring or so fast it's meaningless
+    const hours = totalJourneyHours;
+    if (hours < 1) return 30;       // local delivery: 30s at 1x
+    if (hours < 6) return 50;       // regional truck: 50s at 1x
+    if (hours < 24) return 70;      // inter-city / short flight: 70s at 1x
+    if (hours < 72) return 90;      // long flight: 90s at 1x
+    if (hours < 168) return 100;    // multi-day: 100s at 1x
+    return 120;                     // ocean freight: 120s at 1x
+  }, [totalJourneyHours]);
+
   useEffect(()=>{ isPlayRef.current=playing; },[playing]);
   useEffect(()=>{ speedRef.current=speed; },[speed]);
   useEffect(()=>{ followRef.current=follow; },[follow]);
@@ -516,19 +652,37 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
   useEffect(()=>{
     if(animRef.current) clearInterval(animRef.current);
     if(isDelivered) return;
+
+    const TICK_MS = 50; // 20fps tick rate
     animRef.current=setInterval(()=>{
       if(!isPlayRef.current) return;
       const pts=ptsRef.current; if(!pts.length) return;
-      progRef.current+=0.0018*speedRef.current;
+
+      // Compute adaptive progress increment based on current phase's weight
+      // Phases with more real-time (e.g. ocean voyage) advance slower
+      const tot = pts.length - 1;
+      const ci = Math.min(tot, Math.floor(progRef.current * tot));
+      const curPhIdx = pmRef.current[ci] || 0;
+      const pw = phaseWeightsRef.current;
+
+      // Base increment per tick: 1 / (baseCycleSeconds * 1000/TICK_MS)
+      let baseInc = 1 / (baseCycleSeconds * (1000 / TICK_MS));
+
+      // Adjust for phase weight: phases that represent more time get proportionally more
+      // of the total progress bar, but their advance rate per point is slower
+      // This is handled by the fact that longer phases have more points naturally
+
+      const inc = baseInc * speedRef.current;
+      progRef.current += inc;
       if(progRef.current>=1) progRef.current=0;
 
-      const tot=pts.length-1, exact=progRef.current*tot;
-      const ci=Math.min(tot,Math.floor(exact)), ni=Math.min(tot,ci+1), sub=exact-ci;
-      const c=pts[ci],n=pts[ni]||c;
+      const exact=progRef.current*tot;
+      const ciNow=Math.min(tot,Math.floor(exact)), ni=Math.min(tot,ciNow+1), sub=exact-ciNow;
+      const c=pts[ciNow],n=pts[ni]||c;
       const lat=c[0]+(n[0]-c[0])*sub, lon=c[1]+(n[1]-c[1])*sub;
 
       // smooth bearing
-      const la=pts[Math.min(tot,ci+5)]||n;
+      const la=pts[Math.min(tot,ciNow+5)]||n;
       const rb=brg(lat,lon,la[0],la[1]);
       let diff=(rb-smBrgRef.current+360)%360; if(diff>180)diff-=360;
       smBrgRef.current=(smBrgRef.current+diff*.15+360)%360;
@@ -538,7 +692,7 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
       const vm=vmRef.current;
       if(vm) {
         vm.setLatLng([lat,lon]);
-        const phIdx=pmRef.current[ci]||0;
+        const phIdx=pmRef.current[ciNow]||0;
         const newVt=phRef.current[phIdx]?.vehicleType||"truck";
         if(newVt!==lastVtRef.current) {
           lastVtRef.current=newVt;
@@ -550,7 +704,7 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
       }
 
       // polyline updates
-      if(tlRef.current) tlRef.current.setLatLngs([...pts.slice(0,ci+1),[lat,lon]]);
+      if(tlRef.current) tlRef.current.setLatLngs([...pts.slice(0,ciNow+1),[lat,lon]]);
       if(rlRef.current) rlRef.current.setLatLngs([[lat,lon],...pts.slice(ni)]);
 
       // auto-follow (only if enabled, and vehicle near edge)
@@ -563,13 +717,15 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
       const now=Date.now();
       if(now-uiTickRef.current>200) {
         uiTickRef.current=now;
-        const phIdx=pmRef.current[ci]||0;
+        const phIdx=pmRef.current[ciNow]||0;
         const ph=phRef.current[phIdx];
         const dc=dCRef.current;
         const distRem=Math.round(haversine(lat,lon,dc[0],dc[1]));
         const spd=ph?.speedKmh||80;
         const alt=ph?Math.round(ph.altFn(sub)):0;
-        const etaMins=spd>0?Math.round((distRem/spd)*60):0;
+        // Compute realistic ETA from remaining distance and current phase speed
+        const etaHours = spd > 0 ? distRem / spd : 0;
+        const etaStr = formatETA(etaHours);
         let chk=ph?.label||"En Route";
         if(progRef.current<.05) chk=`Departing ${s.senderCity||"Origin"}`;
         else if(progRef.current>.93) chk=`Approaching ${s.receiverCity||"Destination"}`;
@@ -578,15 +734,15 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
         setTele({
           lat:`${Math.abs(lat).toFixed(4)}°${lat>=0?"N":"S"}`,
           lon:`${Math.abs(lon).toFixed(4)}°${lon>=0?"E":"W"}`,
-          alt:alt>0?`${alt.toLocaleString()} m`:"Sea Level",
+          alt:alt>0?`${alt.toLocaleString()} m`:"Ground Level",
           speed:`${spd} km/h`, brg:`${deg}° ${bLabel(deg)}`,
           distRem:`${distRem.toLocaleString()} km`, totDist:`${totDist.toLocaleString()} km`,
-          etaMins, chk,
+          eta: etaStr, chk,
         });
       }
-    },50);
+    },TICK_MS);
     return()=>{ if(animRef.current) clearInterval(animRef.current); };
-  },[s.id,isDelivered,totDist]); // eslint-disable-line
+  },[s.id,isDelivered,totDist,baseCycleSeconds]); // eslint-disable-line
 
   // ── TILE LAYER UPDATE ────────────────────────────────────────────
   useEffect(()=>{
@@ -640,6 +796,17 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
 
   const curPhase = phases[phaseIdx];
 
+  // Helper to get the correct small icon for phase bar
+  const PhaseIcon = ({ vehicleType, className }) => {
+    switch (vehicleType) {
+      case "flight": return <Plane className={className} />;
+      case "ship": return <Anchor className={className} />;
+      case "two-wheeler": return <TwoWheelerIcon className={className} />;
+      case "van": return <Truck className={className} />;
+      default: return <Truck className={className} />;
+    }
+  };
+
   return (
     <div ref={fsRef} className="relative w-full bg-slate-950 overflow-hidden select-none"
       style={{height:fs?"100vh":"100%",minHeight:fs?"100vh":"580px"}}>
@@ -663,11 +830,11 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
       )}
 
       {/* Top HUD */}
-      <div className="absolute top-3 left-3 right-14 z-[500] flex flex-wrap items-start gap-2 pointer-events-none">
+      <div className="absolute top-3 left-3 right-14 z-[500] flex flex-wrap items-start gap-2" style={{pointerEvents:"none"}}>
         {/* Waybill badge */}
-        <div className="pointer-events-auto flex items-center gap-2.5 bg-slate-900/97 backdrop-blur-xl px-3 py-2.5 rounded-xl border border-slate-700/80 shadow-2xl">
+        <div style={{pointerEvents:"auto"}} className="flex items-center gap-2.5 bg-slate-900/97 backdrop-blur-xl px-3 py-2.5 rounded-xl border border-slate-700/80 shadow-2xl">
           <div className={`p-1.5 rounded-lg border ${mode==="flight"?"bg-blue-500/20 text-blue-400 border-blue-500/40":mode==="ship"?"bg-cyan-500/20 text-cyan-400 border-cyan-500/40":mode==="two-wheeler"?"bg-orange-500/20 text-orange-400 border-orange-500/40":mode==="van"?"bg-green-500/20 text-green-400 border-green-500/40":"bg-amber-500/20 text-amber-400 border-amber-500/40"}`}>
-            {mode==="flight"?<Plane className="h-4 w-4"/>:mode==="ship"?<Ship className="h-4 w-4"/>:mode==="two-wheeler"?<svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17L9 10L14 10L19 17M9 10L8 6H5"/></svg>:<Truck className="h-4 w-4"/>}
+            {mode==="flight"?<Plane className="h-4 w-4"/>:mode==="ship"?<Ship className="h-4 w-4"/>:mode==="two-wheeler"?<TwoWheelerIcon className="h-4 w-4"/>:<Truck className="h-4 w-4"/>}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -681,11 +848,11 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
 
         {/* Phase journey bar */}
         {phases.length>1&&(
-          <div className="pointer-events-auto flex-1 min-w-0 bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-800/80 p-2 flex items-center gap-1 overflow-x-auto" style={{scrollbarWidth:"none"}}>
+          <div className="flex-1 min-w-0 bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-800/80 p-2 flex items-center gap-1 overflow-x-auto" style={{scrollbarWidth:"none",pointerEvents:"auto"}}>
             {phases.map((ph,i)=>(
               <React.Fragment key={i}>
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap shrink-0 ${i===phaseIdx?"bg-sky-500/20 text-sky-300 border border-sky-500/40":i<phaseIdx?"text-slate-600 line-through":"text-slate-600"}`}>
-                  {ph.vehicleType==="flight"?<Plane className="h-2.5 w-2.5 shrink-0"/>:ph.vehicleType==="ship"?<Anchor className="h-2.5 w-2.5 shrink-0"/>:<Truck className="h-2.5 w-2.5 shrink-0"/>}
+                  <PhaseIcon vehicleType={ph.vehicleType} className="h-2.5 w-2.5 shrink-0" />
                   <span>{ph.label}</span>
                 </div>
                 {i<phases.length-1&&<ArrowRight className="h-2.5 w-2.5 text-slate-700 shrink-0"/>}
@@ -698,8 +865,8 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
       {/* Map canvas */}
       <div ref={mapContRef} className="absolute inset-0" style={{zIndex:1}}/>
 
-      {/* Right controls */}
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-[500] flex flex-col gap-1.5">
+      {/* Right controls — ensure all buttons are clickable */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-[500] flex flex-col gap-1.5" style={{pointerEvents:"auto"}}>
         {[
           {ic:<ZoomIn className="h-4 w-4"/>,       fn:zoomIn,          tt:"Zoom In"},
           {ic:<ZoomOut className="h-4 w-4"/>,      fn:zoomOut,         tt:"Zoom Out"},
@@ -746,14 +913,14 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
 
         {/* Speed */}
         <div className="flex flex-col gap-0.5 bg-slate-900/97 border border-slate-700/80 rounded-xl p-1">
-          {[0.5,1,2,4].map(sp=>(
+          {[0.5,1,2,4,8].map(sp=>(
             <button key={sp} onClick={()=>changeSpeed(sp)} className={`px-1 py-0.5 rounded text-[8px] font-bold transition cursor-pointer ${speed===sp?"bg-sky-500 text-white":"text-slate-400 hover:text-slate-200"}`}>{sp}×</button>
           ))}
         </div>
       </div>
 
       {/* Route Legend */}
-      <div className="absolute bottom-28 left-3 z-[500] bg-slate-900/97 backdrop-blur-xl rounded-xl border border-slate-700/80 p-3 shadow-xl">
+      <div className="absolute bottom-28 left-3 z-[500] bg-slate-900/97 backdrop-blur-xl rounded-xl border border-slate-700/80 p-3 shadow-xl" style={{pointerEvents:"auto"}}>
         <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-2">Legend</div>
         <div className="space-y-1.5">
           {[
@@ -781,14 +948,14 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
       </div>
 
       {/* Bottom telemetry */}
-      <div className="absolute bottom-2 left-2 right-2 z-[500] bg-slate-900/97 backdrop-blur-xl rounded-2xl border border-slate-700/80 shadow-2xl p-3">
+      <div className="absolute bottom-2 left-2 right-2 z-[500] bg-slate-900/97 backdrop-blur-xl rounded-2xl border border-slate-700/80 shadow-2xl p-3" style={{pointerEvents:"auto"}}>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-2 text-xs">
           {[
             {l:"POSITION",   v:tele.lat,     s:tele.lon,      vc:"text-white"},
             {l:"SPEED / ALT",v:tele.speed,   s:tele.alt,      vc:"text-emerald-400"},
             {l:"HEADING",    v:tele.brg,     s:mode.toUpperCase(), vc:"text-sky-400"},
             {l:"DISTANCE",   v:tele.distRem+" rem", s:`Total: ${tele.totDist||"—"}`, vc:"text-amber-400"},
-            {l:"ETA",        v:isDelivered?"Delivered":tele.etaMins>0?`~${tele.etaMins} min`:"Arriving", s:s.estimatedDelivery||"—", vc:"text-purple-400"},
+            {l:"ETA",        v:isDelivered?"Delivered":tele.eta||"Calculating...", s:s.estimatedDelivery||"—", vc:"text-purple-400"},
             {l:"CHECKPOINT", v:tele.chk,     s:<span className="text-emerald-400 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"/>{isDelivered?"Done":"GPS Live"}</span>, vc:"text-white"},
           ].map(({l,v,s,vc})=>(
             <div key={l}>
@@ -806,7 +973,7 @@ export default function ThreeDTrackMap({ activeShipment, shipment }) {
           </div>
           <span className="text-[8px] font-mono text-slate-600 shrink-0 truncate max-w-[60px] text-right">{s.receiverCity||"B"}</span>
           <span className="text-[10px] font-mono font-bold text-sky-400 shrink-0 w-7 text-right">{Math.round(prog*100)}%</span>
-          <input type="range" min="0" max="1" step="0.001" value={prog} onChange={e=>scrub(parseFloat(e.target.value))} className="w-16 cursor-pointer accent-sky-400 h-1 shrink-0"/>
+          <input type="range" min="0" max="1" step="0.001" value={prog} onChange={e=>scrub(parseFloat(e.target.value))} className="w-16 cursor-pointer accent-sky-400 h-1 shrink-0" style={{pointerEvents:"auto"}}/>
         </div>
       </div>
     </div>

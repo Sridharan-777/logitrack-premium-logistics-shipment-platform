@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Truck,
   User,
+  Bike,
   ChevronDown,
   Sparkles,
 } from "lucide-react";
@@ -150,7 +151,7 @@ export default function Header({
                     }`}
                   >
                     <div className="h-6 w-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                      👑
+                      <ShieldCheck className="h-3.5 w-3.5" />
                     </div>
                     <div>
                       <span className="block font-black text-white">Administrator</span>
@@ -170,7 +171,7 @@ export default function Header({
                     }`}
                   >
                     <div className="h-6 w-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                      👷
+                      <Truck className="h-3.5 w-3.5" />
                     </div>
                     <div>
                       <span className="block font-black text-white">Operations Staff</span>
@@ -190,7 +191,7 @@ export default function Header({
                     }`}
                   >
                     <div className="h-6 w-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                      🛵
+                      <Bike className="h-3.5 w-3.5" />
                     </div>
                     <div>
                       <span className="block font-black text-white">Field Delivery Worker</span>
@@ -210,7 +211,7 @@ export default function Header({
                     }`}
                   >
                     <div className="h-6 w-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
-                      👤
+                      <User className="h-3.5 w-3.5" />
                     </div>
                     <div>
                       <span className="block font-black text-white">Customer User</span>

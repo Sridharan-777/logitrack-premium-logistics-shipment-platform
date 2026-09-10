@@ -152,7 +152,7 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
               }`}
             >
               <Bike className="h-3.5 w-3.5" />
-              <span>Worker 🛵</span>
+              <span>Worker</span>
             </button>
 
             <button
@@ -178,7 +178,7 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
               }`}
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Admin 👑</span>
+              <span>Admin</span>
             </button>
           </div>
 
@@ -196,28 +196,28 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
                 onClick={() => handleQuickDemoLogin(ROLES.USER)}
                 className="py-1.5 px-1.5 bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
               >
-                👤 Customer
+                Customer
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin(ROLES.WORKER)}
                 className="py-1.5 px-1.5 bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
               >
-                🛵 2-Wheeler
+                2-Wheeler Worker
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin(ROLES.STAFF)}
                 className="py-1.5 px-1.5 bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
               >
-                👷 Staff Ops
+                Staff Ops
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin(ROLES.ADMIN)}
                 className="py-1.5 px-1.5 bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer"
               >
-                👑 Master Admin
+                Master Admin
               </button>
             </div>
           </div>
@@ -334,22 +334,22 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
 
           <div className="space-y-3 text-xs text-slate-300">
             <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-              <span className="font-black text-emerald-400 block mb-0.5">👑 Administrator:</span>
+              <span className="font-black text-emerald-400 block mb-0.5">Administrator:</span>
               <span>Full Master CRUD on Users, Workers, Staff, Shipments, Fleet; live Profit &amp; Loss Calculator and Excel exports.</span>
             </div>
 
             <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-              <span className="font-black text-purple-400 block mb-0.5">👷 Staff Supervisor:</span>
+              <span className="font-black text-purple-400 block mb-0.5">Staff Supervisor:</span>
               <span>Monitors parcel data &amp; customer receipt status, triggers rapid two-wheeler redeliveries, and performs CRUD on workers and users.</span>
             </div>
 
             <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-              <span className="font-black text-amber-400 block mb-0.5">🛵 Doorstep Delivery Worker:</span>
+              <span className="font-black text-amber-400 block mb-0.5">Doorstep Delivery Worker:</span>
               <span>Reports transport vehicle (Two-Wheeler EV Scooter / Bike / Van), executes doorstep deliveries, and captures customer signatures.</span>
             </div>
 
             <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-              <span className="font-black text-sky-400 block mb-0.5">👤 Customer / Client:</span>
+              <span className="font-black text-sky-400 block mb-0.5">Customer / Client:</span>
               <span>On-demand 3D package booking, live GPS map tracking, and instant delivery receipt confirmations.</span>
             </div>
           </div>
@@ -428,7 +428,7 @@ export function RegisterView({ onNavigate, onLoginSuccess }) {
                   : "bg-slate-950 text-slate-400 border-slate-800"
               }`}
             >
-              Worker 🛵
+              Worker
             </button>
             <button
               type="button"
@@ -450,7 +450,7 @@ export function RegisterView({ onNavigate, onLoginSuccess }) {
                   : "bg-slate-950 text-slate-400 border-slate-800"
               }`}
             >
-              Admin 👑
+              Admin
             </button>
           </div>
 

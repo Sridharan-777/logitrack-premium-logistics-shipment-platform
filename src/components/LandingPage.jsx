@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Box,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 import ThreeDCard from "./ThreeDCard";
 import ThreeDTrackMap from "./ThreeDTrackMap";
@@ -152,7 +153,8 @@ export default function LandingPage({
 
             {guestSearchFeedback && (
               <div className="mt-3 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2">
-                <span>⚠️ {guestSearchFeedback}</span>
+                <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+                <span>{guestSearchFeedback}</span>
               </div>
             )}
 

@@ -23,8 +23,11 @@ import {
   RotateCcw,
   Check,
   Search,
+  Star,
+  Download,
 } from "lucide-react";
 import ThreeDCard from "./ThreeDCard";
+import { exportShipmentsToExcel, exportWorkersToExcel } from "../utils/exportUtils";
 
 export default function StaffWorkspaceView({
   staffUser,
@@ -95,13 +98,13 @@ export default function StaffWorkspaceView({
     // Find an active two-wheeler worker
     const twoWheelerWorker = workersList.find((w) => w.transportMode === "two-wheeler") || workersList[0];
     onReassignWorker(shipment.id, twoWheelerWorker.id, twoWheelerWorker.name, "two-wheeler");
-    setActionFeedback(`⚡ Dispatched Rapid Two-Wheeler Courier (${twoWheelerWorker.name}) for Waybill ${shipment.id}!`);
+    setActionFeedback(`Dispatched Rapid Two-Wheeler Courier (${twoWheelerWorker.name}) for Waybill ${shipment.id}!`);
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
   const handleActionTriggerRedelivery = (shipment) => {
     onTriggerRedelivery(shipment.id);
-    setActionFeedback(`🔄 Expedited Redelivery Task scheduled for ${shipment.id}.`);
+    setActionFeedback(`Expedited Redelivery Task scheduled for ${shipment.id}.`);
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
@@ -111,7 +114,7 @@ export default function StaffWorkspaceView({
     const worker = workersList.find((w) => w.id === selectedWorkerForReassign);
     if (worker) {
       onReassignWorker(reassignModalShipment.id, worker.id, worker.name, worker.transportMode || "two-wheeler");
-      setActionFeedback(`✓ Consignment ${reassignModalShipment.id} assigned to ${worker.name}.`);
+      setActionFeedback(`Consignment ${reassignModalShipment.id} assigned to ${worker.name}.`);
       setTimeout(() => setActionFeedback(null), 5000);
     }
     setReassignModalShipment(null);
@@ -151,7 +154,7 @@ export default function StaffWorkspaceView({
       zone: "Urban Delivery Sector",
       doorStepServiceType: "Same-Day Door Delivery",
     });
-    setActionFeedback(`✓ New Worker "${created.name}" registered successfully!`);
+    setActionFeedback(`New Worker "${created.name}" registered successfully!`);
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
@@ -181,7 +184,7 @@ export default function StaffWorkspaceView({
       company: "",
       location: "",
     });
-    setActionFeedback(`✓ Customer "${created.name}" created and verified.`);
+    setActionFeedback(`Customer "${created.name}" created and verified.`);
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
@@ -317,35 +320,38 @@ export default function StaffWorkspaceView({
       <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
         <button
           onClick={() => setMainTab("parcels")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
             mainTab === "parcels"
               ? "bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/20"
               : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
           }`}
         >
-          📦 Parcel Receipt &amp; Action Center ({totalParcels})
+          <Package className="h-4 w-4" />
+          <span>Parcel Receipt &amp; Action Center ({totalParcels})</span>
         </button>
 
         <button
           onClick={() => setMainTab("workers-crud")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
             mainTab === "workers-crud"
               ? "bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20"
               : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
           }`}
         >
-          🛵 Manage Workers / Two-Wheelers ({workersList.length})
+          <Bike className="h-4 w-4" />
+          <span>Manage Workers / Two-Wheelers ({workersList.length})</span>
         </button>
 
         <button
           onClick={() => setMainTab("users-crud")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
             mainTab === "users-crud"
               ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
               : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
           }`}
         >
-          👤 Manage Customers / Users ({customersList.length})
+          <Users className="h-4 w-4" />
+          <span>Manage Customers / Users ({customersList.length})</span>
         </button>
       </div>
 
@@ -365,35 +371,48 @@ export default function StaffWorkspaceView({
               </button>
               <button
                 onClick={() => setFilterReceiptStatus("not-received")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                   filterReceiptStatus === "not-received"
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black"
                     : "text-slate-400 hover:bg-slate-900"
                 }`}
               >
-                ⚠️ Not Received Yet ({notReceivedCount})
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                <span>Not Received Yet ({notReceivedCount})</span>
               </button>
               <button
                 onClick={() => setFilterReceiptStatus("received")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                   filterReceiptStatus === "received"
                     ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black"
                     : "text-slate-400 hover:bg-slate-900"
                 }`}
               >
-                ✓ Received &amp; Verified ({receivedCount})
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Received &amp; Verified ({receivedCount})</span>
               </button>
             </div>
 
-            <div className="relative max-w-sm w-full">
-              <Search className="h-4 w-4 absolute inset-y-0 left-3 my-auto text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search waybill, customer, courier..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400"
-              />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => exportShipmentsToExcel(shipments)}
+                className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 transition cursor-pointer"
+                title="Download Excel Sheet of all Parcels"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Excel Export</span>
+              </button>
+
+              <div className="relative max-w-sm w-full">
+                <Search className="h-4 w-4 absolute inset-y-0 left-3 my-auto text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search waybill, customer, courier..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400"
+                />
+              </div>
             </div>
           </div>
 

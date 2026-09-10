@@ -128,12 +128,12 @@ export default function Sidebar({
                 : "text-sky-400"
             }`}>
               {systemRole === ROLES.ADMIN
-                ? "👑 Admin Console"
+                ? "Admin Console"
                 : systemRole === ROLES.STAFF
-                ? "👷 Staff Console"
+                ? "Staff Console"
                 : systemRole === ROLES.WORKER
-                ? "🛵 Field Worker"
-                : "👤 Customer Portal"}
+                ? "Field Worker"
+                : "Customer Portal"}
             </span>
           </div>
         </div>

@@ -97,7 +97,7 @@ export default function DashboardView({
           <div className="space-y-3 max-w-2xl">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-full text-xs font-black text-amber-300 uppercase tracking-wider">
               <Zap className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
-              {isAdmin ? "👑 Administrator Terminal Online" : isStaff ? "👷 Operations Staff Console Online" : "3D Logistics Telemetry Online"}
+              {isAdmin ? "Administrator Terminal Online" : isStaff ? "Operations Staff Console Online" : "3D Logistics Telemetry Online"}
             </span>
             <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
               {isAdmin ? "Executive Logistics Operations Terminal" : "3D Operations Control Terminal"}
@@ -272,8 +272,10 @@ export default function DashboardView({
                   </span>
                 </div>
 
-                <p className="text-xs font-medium text-slate-300">
-                  {shipment.senderCity} ➔ <strong className="text-white">{shipment.receiverCity}</strong>
+                <p className="text-xs font-medium text-slate-300 flex items-center gap-1">
+                  <span>{shipment.senderCity}</span>
+                  <ArrowRight className="h-3 w-3 text-sky-400" />
+                  <strong className="text-white">{shipment.receiverCity}</strong>
                 </p>
                 <p className="text-[11px] text-slate-400 line-clamp-1">
                   Recipient: {shipment.receiverName} ({shipment.weight} kg)

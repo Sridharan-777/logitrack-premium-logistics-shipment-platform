@@ -241,3 +241,44 @@ export function exportPayrollToExcel(staffList) {
 
   downloadCSV(filename, headers, rows);
 }
+
+/**
+ * Exports Field Delivery Workers & Couriers to Excel
+ */
+export function exportWorkersToExcel(workersList) {
+  const timestamp = new Date().toISOString().slice(0, 10);
+  const filename = `LogiTrack_Field_Workers_Directory_${timestamp}.csv`;
+
+  const headers = [
+    "Worker ID",
+    "Full Name",
+    "Role Designation",
+    "Email",
+    "Phone",
+    "Transport Mode",
+    "Vehicle Description",
+    "Assigned Zone",
+    "Current Status",
+    "Completed Drops Today",
+    "Daily Earnings (€)",
+    "Performance Rating",
+  ];
+
+  const rows = workersList.map((w) => [
+    w.id,
+    w.name,
+    w.role,
+    w.email,
+    w.phone,
+    (w.transportMode || "two-wheeler").toUpperCase(),
+    w.vehicleType || "Standard Vehicle",
+    w.zone || "Urban Sector",
+    w.status || "Active",
+    w.completedToday || 0,
+    `€${Number(w.dailyEarnings || 0).toFixed(2)}`,
+    `${w.rating || 5.0} / 5.0`,
+  ]);
+
+  downloadCSV(filename, headers, rows);
+}
+

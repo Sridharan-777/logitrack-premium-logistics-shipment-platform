@@ -19,6 +19,7 @@ import AdminShipmentManagerModal from "./components/AdminShipmentManagerModal";
 import StaffWorkspaceView from "./components/StaffWorkspaceView";
 import StaffSalaryView from "./components/StaffSalaryView";
 import WorkerWorkspaceView from "./components/WorkerWorkspaceView";
+import AIChatbot from "./components/AIChatbot";
 import {
   ROLES,
   INITIAL_USERS,
@@ -985,6 +986,11 @@ export default function App() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Global AI Chatbot — floating on all pages */}
+      {user && view !== "landing" && view !== "login" && view !== "register" && (
+        <AIChatbot shipments={shipments} activeShipment={shipments.find(s => s.status === "In Transit" || s.status === "Out for Delivery") || shipments[0]} />
       )}
     </div>
   );
