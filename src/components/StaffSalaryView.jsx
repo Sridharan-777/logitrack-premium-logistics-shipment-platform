@@ -20,15 +20,15 @@ export default function StaffSalaryView({ staffUser }) {
   const [selectedMonth, setSelectedMonth] = useState("August 2026");
 
   // Calculate staff compensation figures
-  const baseSalary = staffUser?.monthlyBaseSalary || 4200;
-  const tripBonusRate = staffUser?.tripBonusRate || 45;
-  const completedTrips = staffUser?.completedTripsThisMonth || 34;
+  const baseSalary = staffUser?.monthlyBaseSalary ?? 4200;
+  const tripBonusRate = staffUser?.tripBonusRate ?? 45;
+  const completedTrips = staffUser?.completedTripsThisMonth ?? 34;
   const tripBonusTotal = completedTrips * tripBonusRate;
-  const hourlyRate = staffUser?.hourlyRate || 28.5;
-  const hoursWorked = staffUser?.hoursWorkedThisMonth || 160;
-  const overtimeHours = staffUser?.overtimeHours || 14;
+  const hourlyRate = staffUser?.hourlyRate ?? 28.5;
+  const hoursWorked = staffUser?.hoursWorkedThisMonth ?? 160;
+  const overtimeHours = staffUser?.overtimeHours ?? 14;
   const overtimePay = overtimeHours * (hourlyRate * 1.5);
-  const deductions = staffUser?.deductions || 620;
+  const deductions = staffUser?.deductions ?? 620;
 
   const grossPay = baseSalary + tripBonusTotal + overtimePay;
   const netPay = grossPay - deductions;
@@ -69,7 +69,7 @@ export default function StaffSalaryView({ staffUser }) {
     const headers = ["Pay Slip Parameter", "Details / Value"];
     const rows = [
       ["Employee Name", staffUser.name],
-      ["Employee ID", staffUser.id || "STAFF-01"],
+      ["Employee ID", staffUser.id ?? "STAFF-01"],
       ["Role", staffUser.role],
       ["Pay Period", slip.period],
       ["Base Monthly Salary", `€${baseSalary.toFixed(2)}`],
@@ -79,7 +79,7 @@ export default function StaffSalaryView({ staffUser }) {
       ["Gross Compensation", `€${slip.gross.toFixed(2)}`],
       ["Tax & Social Security Deductions", `-€${slip.deductions.toFixed(2)}`],
       ["Net Bank Payout", `€${slip.net.toFixed(2)}`],
-      ["Payout Method", staffUser.paymentMethod || "Direct SEPA Bank Wire"],
+      ["Payout Method", staffUser.paymentMethod ?? "Direct SEPA Bank Wire"],
       ["Authorization", "Verified by LogiTrack Executive Board"],
     ];
 
@@ -202,7 +202,7 @@ export default function StaffSalaryView({ staffUser }) {
             <p className="text-xs text-slate-400">Audited salary components and incentive bonus ledger</p>
           </div>
           <span className="px-3 py-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-mono font-bold">
-            Account: {staffUser?.paymentMethod || "DE89 •••• 4021"}
+            Account: {staffUser?.paymentMethod ?? "DE89 •••• 4021"}
           </span>
         </div>
 

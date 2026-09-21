@@ -196,13 +196,13 @@ export default function LandingPage({
       <section id="demo-3d" className="py-20 px-6 max-w-7xl mx-auto w-full">
         <div className="text-center mb-12 space-y-3">
           <span className="text-sky-400 bg-sky-500/10 border border-sky-500/30 px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider">
-            HIGH-PRECISION LIVE GPS & SATELLITE ENGINE
+            INTERACTIVE SHIPMENT ROUTE DEMO
           </span>
           <h2 className="text-3xl md:text-5xl font-black text-white">
-            Real-Time Live GPS Logistics Tracking Map
+            Explore Your Shipment Route
           </h2>
           <p className="text-slate-300 max-w-2xl mx-auto text-base font-medium">
-            Accurate coordinate mapping, high-definition satellite imagery, live waypoint telemetry, and animated carrier transit paths.
+            Explore animated demonstration routes. For actual vehicle locations, open Phone GPS Tracking and connect an authorized driver phone.
           </p>
         </div>
 

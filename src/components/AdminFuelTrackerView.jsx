@@ -35,8 +35,8 @@ export default function AdminFuelTrackerView({
     route: "",
     distanceKm: "",
     fuelAmount: "",
-    fuelUnit: "Liters",
-    costPerUnit: "1.75",
+    fuelUnit: fleet[0]?.fuelType.includes("Electric") ? "kWh" : "Liters",
+    costPerUnit: String(fleet[0]?.fuelCostPerUnit ?? 1.75),
     notes: "",
   });
 

@@ -28,12 +28,12 @@ export default function AdminProfitLossView({ shipments, fuelLogs, staffList }) 
   const [staffBonusMultiplier, setStaffBonusMultiplier] = useState(1.0);
   const [simulatedVolumeBoost, setSimulatedVolumeBoost] = useState(0); // Add extra shipments
 
-  // Calculate actual revenue and costs from live shipments and logs
+  // Planning simulator: all loaded demo records, not a financial statement.
   const financialMetrics = useMemo(() => {
     const baseShipmentRevenue = shipments.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
     const totalShipmentRevenue = baseShipmentRevenue * markupMultiplier * (1 + simulatedVolumeBoost / 100);
 
-    // Fuel costs from logs + shipment assigned fuel
+    // Fuel logs are the actual-cost source; allocated shipment estimates are not added twice.
     const baseFuelCost = fuelLogs.reduce((sum, f) => sum + (Number(f.totalCost) || 0), 0);
     const totalFuelCost = baseFuelCost * fuelCostMultiplier;
 
@@ -46,7 +46,7 @@ export default function AdminProfitLossView({ shipments, fuelLogs, staffList }) 
 
     // Operational fixed overheads (warehouse, maintenance, customs fees)
     const customsAndHandlingFees = shipments.reduce((sum, s) => sum + (s.status === "Customs Hold" ? 180 : 25), 0);
-    const warehouseAndFleetMaintenance = 1450.0;
+    const warehouseAndFleetMaintenance = 1450.0 + shipments.reduce((sum, s) => sum + (Number(s.operationalCost) || 0), 0);
     const insuranceAndCompliance = 620.0;
 
     const totalExpenses =
@@ -112,7 +112,7 @@ export default function AdminProfitLossView({ shipments, fuelLogs, staffList }) 
         percentage: (warehouseAndFleetMaintenance / totalExpenses) * 100 || 0,
         icon: Building,
         color: "text-purple-400",
-        notes: "Lease, sorting automation, truck telemetry checkups",
+        notes: "Fixed planning allowance plus shipment operating cost estimates",
       },
       {
         title: "Cargo Insurance & SLA Guarantee Reserves",

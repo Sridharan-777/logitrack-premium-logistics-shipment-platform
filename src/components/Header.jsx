@@ -73,7 +73,7 @@ export default function Header({
   return (
     <header
       id="app-header"
-      className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-4 md:px-8 shadow-2xl font-sans"
+      className="sticky top-0 z-[60] flex min-h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-4 md:px-8 shadow-2xl font-sans"
     >
       {/* Left side: Mobile Hamburger and Title */}
       <div className="flex items-center gap-4">
@@ -266,7 +266,7 @@ export default function Header({
             id="btn-theme-toggle"
             onClick={() => setShowThemeMenu(!showThemeMenu)}
             className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer relative group"
-            title="Switch Theme"
+            aria-label="Switch theme" aria-expanded={showThemeMenu} title="Switch Theme"
           >
             <ThemeIcon className={`h-5 w-5 transition-transform group-hover:rotate-12 ${currentTheme.accent}`} />
           </button>

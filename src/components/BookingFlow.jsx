@@ -26,18 +26,20 @@ import ThreeDPackageViewer from "./ThreeDPackageViewer";
 import ThreeDCard from "./ThreeDCard";
 
 export default function BookingFlow({
+  user,
   savedAddresses,
   onBookingComplete,
   onNavigate,
 }) {
   const [step, setStep] = useState(1);
+  const [formError, setFormError] = useState("");
   const [copiedId, setCopiedId] = useState(false);
 
   // Form States
   // Step 1: Sender
-  const [senderName, setSenderName] = useState("Sridharan K");
-  const [senderPhone, setSenderPhone] = useState("+91 94432 10987");
-  const [senderEmail, setSenderEmail] = useState("24104029@nec.edu.in");
+  const [senderName, setSenderName] = useState(user?.name || "");
+  const [senderPhone, setSenderPhone] = useState(user?.phone || "");
+  const [senderEmail, setSenderEmail] = useState(user?.email || "");
   const [senderAddress, setSenderAddress] = useState(
     "National Engineering College Campus",
   );
@@ -73,7 +75,7 @@ export default function BookingFlow({
 
   // Checkout States
   const [paymentMethod, setPaymentMethod] = useState("card");
-  const [cardName, setCardName] = useState("Sridharan K");
+  const [cardName, setCardName] = useState(user?.name || "");
   const [cardNumber, setCardNumber] = useState("4111 2222 3333 4444");
   const [cardExpiry, setCardExpiry] = useState("11/29");
   const [cardCvv, setCardCvv] = useState("382");
@@ -112,6 +114,10 @@ export default function BookingFlow({
   };
 
   const handleNextStep = () => {
+    setFormError("");
+    const contact = step === 1 ? [senderName, senderPhone, senderEmail, senderAddress, senderCity] : [receiverName, receiverPhone, receiverEmail, receiverAddress, receiverCity];
+    if ((step === 1 || step === 2) && (contact.some(v => !v.trim()) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact[2]))) { setFormError("Complete all contact fields and enter a valid email."); return; }
+    if (step === 3 && (!(weight > 0) || !Number.isInteger(Number(qty)) || qty < 1 || !itemDescription.trim() || !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?$/i.test(dimensions))) { setFormError("Enter a positive weight, whole quantity, description, and dimensions such as 40 x 30 x 15."); return; }
     if (step === 1) setStep(2);
     else if (step === 2) setStep(3);
     else if (step === 3) setStep(4);
@@ -186,7 +192,7 @@ export default function BookingFlow({
 
       setCreatedTrackingId(generatedId);
       setCreatedShipment(newShipmentObj);
-      onBookingComplete(newShipmentObj);
+      try { onBookingComplete(newShipmentObj); } catch (error) { setFormError(error.message); setPaymentProcessing(false); return; }
       setPaymentProcessing(false);
       setStep("confirmation");
     }, 1500);
@@ -220,6 +226,8 @@ export default function BookingFlow({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 font-sans">
+      <p className="text-sm text-slate-300">Demo booking: no payment is collected. Do not enter real card details.</p>
+      {formError && <p role="alert" className="p-3 rounded-xl bg-rose-500/10 text-rose-400">{formError}</p>}
       {/* Wizard Header Stepper */}
       {step !== "confirmation" && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
@@ -644,7 +652,7 @@ export default function BookingFlow({
                       disabled={paymentProcessing}
                       className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition cursor-pointer"
                     >
-                      {paymentProcessing ? "Authorizing 3D Waybill..." : `Authorize Payment ($${getGrandTotal().toFixed(2)})`}
+                      {paymentProcessing ? "Authorizing 3D Waybill..." : `Confirm demo booking (€${getGrandTotal().toFixed(2)})`}
                     </button>
                   ) : (
                     <button

@@ -59,6 +59,7 @@ export default function TrackingView({ shipments, selectedShipmentId, onSelectSh
 
   return (
     <div className="w-full max-w-[1600px] mx-auto font-sans space-y-3">
+      <p className="text-sm text-amber-400">Route simulation: animated positions are not live GPS. Use Phone GPS Tracking for device locations.</p>
       {/* ── Compact Search Bar ── */}
       <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl p-3 shadow-xl">
         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">

@@ -95,9 +95,12 @@ export default function StaffWorkspaceView({
   });
 
   const handleActionDispatchTwoWheeler = (shipment) => {
+    if (shipment.status === "Customs Hold") { setActionFeedback("Resolve the customs hold before dispatching a courier."); return; }
     // Find an active two-wheeler worker
     const twoWheelerWorker = workersList.find((w) => w.transportMode === "two-wheeler") || workersList[0];
+    if (!twoWheelerWorker) { setActionFeedback("Add a courier before dispatching."); return; }
     onReassignWorker(shipment.id, twoWheelerWorker.id, twoWheelerWorker.name, "two-wheeler");
+    onUpdateShipmentStatus(shipment.id, "Out for Delivery", "Supervisor dispatched the assigned courier.");
     setActionFeedback(`Dispatched Rapid Two-Wheeler Courier (${twoWheelerWorker.name}) for Waybill ${shipment.id}!`);
     setTimeout(() => setActionFeedback(null), 5000);
   };

@@ -463,7 +463,9 @@ const TwoWheelerIcon = ({ className }) => (
 // 9. MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════
 export default function ThreeDTrackMap({ activeShipment, shipment }) {
-  const s = activeShipment || shipment || {};
+  const raw = activeShipment || shipment || {};
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const s = Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, typeof value === "string" ? escape(value) : value]));
 
   // ── Leaflet refs (imperative, no re-renders)
   const mapContRef  = useRef(null);

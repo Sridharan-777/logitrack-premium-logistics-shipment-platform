@@ -3,7 +3,7 @@ import { MessageCircle, X, Send, Bot, User, Sparkles, Package, MapPin, Clock, Tr
 
 // ── Smart response engine ──────────────────────────────────────
 // This is a rule-based AI that uses actual shipment data to give
-// accurate, contextual answers about deliveries.
+// demonstration, contextual answers about deliveries.
 
 const GREETINGS = [
   "Hello! 👋 I'm LogiTrack AI, your smart logistics assistant. How can I help you today?",
@@ -64,6 +64,7 @@ function computeETA(senderCity, receiverCity, mode) {
   const oC = getCityCoord(senderCity);
   const dC = getCityCoord(receiverCity);
   if (!oC || !dC) return null;
+  if (["two-wheeler", "bike", "van"].includes(mode) && haversine(oC[0], oC[1], dC[0], dC[1]) > 100) return null;
   const dist = haversine(oC[0], oC[1], dC[0], dC[1]);
   const profile = SPEED_PROFILES[mode] || SPEED_PROFILES.truck;
 
@@ -99,7 +100,7 @@ function generateResponse(input, shipments, activeShipment) {
         `\n\n${found.status === "Delivered" ? "✅ This package has been successfully delivered!" :
           found.status === "Customs Hold" ? "⚠️ This package is held at customs. Documentation may be required to proceed." :
           found.status === "Out for Delivery" ? "🏍️ Your package is out for final delivery! The courier is on the way." :
-          "📡 Package is actively being tracked on the live map."}`;
+          "📡 Package is shown on the simulated route map."}`;
     }
     return `❌ I couldn't find a shipment with ID matching "${idMatch[0]}". Please check the tracking number and try again. Your tracking IDs look like: **TRK-XXXX-X**`;
   }
@@ -139,7 +140,7 @@ function generateResponse(input, shipments, activeShipment) {
         `**Current Location**: ${activeShipment.currentLocation || "En route"}\n` +
         `**From**: ${activeShipment.senderCity} → **To**: ${activeShipment.receiverCity}\n` +
         `**Transport**: ${(activeShipment.transportModeUsed || "truck").toUpperCase()}\n\n` +
-        `${activeShipment.status === "In Transit" ? "📡 The vehicle is actively being tracked on the live map. Watch the animation!" :
+        `${activeShipment.status === "In Transit" ? "📡 The vehicle is shown on the simulated route map. Watch the animation!" :
           activeShipment.status === "Out for Delivery" ? "🏍️ Almost there! The courier is heading to the delivery address." :
           activeShipment.status === "Delivered" ? "✅ Package has been delivered and confirmed." :
           activeShipment.status === "Customs Hold" ? "⚠️ Package is held at customs. Please check if any documentation is needed." :

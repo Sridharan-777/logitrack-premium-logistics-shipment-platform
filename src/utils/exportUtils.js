@@ -6,7 +6,9 @@
  */
 function formatCSVField(val) {
   if (val === null || val === undefined) return '""';
-  let stringVal = String(val).replace(/"/g, '""');
+  let safe = String(val);
+  if (/^[\s]*[=+@-]/.test(safe)) safe = "'" + safe;
+  let stringVal = safe.replace(/"/g, '""');
   // If string contains comma, newline, or double quote, wrap in quotes
   if (stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')) {
     return `"${stringVal}"`;
@@ -133,7 +135,7 @@ export function exportProfitLossToExcel(summary, revenueItems, expenseItems) {
       `${item.percentage.toFixed(1)}%`,
       item.notes,
     ]),
-    ["TOTAL OPERATING EXPENSES", "Gross Outflow", `€${summary.totalExpenses.toFixed(2)}`, `${((summary.totalExpenses / summary.totalRevenue) * 100).toFixed(1)}%`, "Total Logistics OPEX"],
+    ["TOTAL OPERATING EXPENSES", "Gross Outflow", `€${summary.totalExpenses.toFixed(2)}`, `${(summary.totalRevenue ? (summary.totalExpenses / summary.totalRevenue) * 100 : 0).toFixed(1)}%`, "Total Logistics OPEX"],
     ["", "", "", "", ""],
     ["=== NET PROFITABILITY ===", "", "", "", ""],
     ["NET OPERATING PROFIT", "Net Earning", `€${summary.netProfit.toFixed(2)}`, `${summary.profitMargin.toFixed(1)}%`, "Net before corporate tax"],

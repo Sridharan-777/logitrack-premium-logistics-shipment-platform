@@ -41,6 +41,9 @@ export default function AdminShipmentManagerModal({
     const updated = {
       ...shipment,
       status: formData.status,
+      receivedByCustomer: formData.status === "Delivered",
+      proofOfDelivery: formData.status === "Delivered" ? shipment.proofOfDelivery : null,
+      escalationStatus: formData.status === "Delivered" ? "Resolved" : formData.status === "Customs Hold" ? "Action Required" : "Normal",
       cost: parseFloat(formData.cost) || 0,
       operationalCost: parseFloat(formData.operationalCost) || 0,
       fuelExpense: parseFloat(formData.fuelExpense) || 0,

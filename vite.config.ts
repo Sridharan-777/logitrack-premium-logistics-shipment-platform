@@ -11,7 +11,9 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: { rollupOptions: { output: { manualChunks: { three: ["three"], maps: ["leaflet"], react: ["react", "react-dom"] } } } },
     server: {
+      proxy: { "/api": "http://127.0.0.1:3001" },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

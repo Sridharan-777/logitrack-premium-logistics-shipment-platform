@@ -6,7 +6,7 @@ export default function ThreeDBackground() {
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     // Scene, Camera, Renderer
     const scene = new THREE.Scene();
@@ -18,7 +18,8 @@ export default function ThreeDBackground() {
     );
     camera.position.z = 30;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); } catch { return; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);

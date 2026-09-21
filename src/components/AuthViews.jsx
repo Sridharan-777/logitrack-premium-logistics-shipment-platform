@@ -78,22 +78,8 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      let detectedRole = activeRoleTab;
-      let userName = "Sridharan K";
-
-      if (email.toLowerCase().includes("admin") || activeRoleTab === ROLES.ADMIN) {
-        detectedRole = ROLES.ADMIN;
-        userName = "LogiTrack Executive Admin";
-      } else if (email.toLowerCase().includes("worker") || email.toLowerCase().includes("rahul") || activeRoleTab === ROLES.WORKER) {
-        detectedRole = ROLES.WORKER;
-        userName = "Rahul Sharma";
-      } else if (email.toLowerCase().includes("staff") || email.toLowerCase().includes("alex") || activeRoleTab === ROLES.STAFF) {
-        detectedRole = ROLES.STAFF;
-        userName = "Alex Rivera";
-      } else {
-        detectedRole = ROLES.USER;
-        userName = "Sridharan K";
-      }
+      const detectedRole = activeRoleTab;
+      const userName = activeRoleTab === ROLES.USER ? email.split("@")[0] : activeRoleTab === ROLES.ADMIN ? INITIAL_USERS.admin.name : activeRoleTab === ROLES.STAFF ? INITIAL_USERS.staff.name : INITIAL_USERS.worker.name;
 
       onLoginSuccess(userName, email, detectedRole);
     }, 500);
@@ -120,10 +106,10 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
           {/* Form Header */}
           <div className="space-y-1">
             <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-              Select Workspace Portal
+              Explore a Demo Workspace
             </h2>
             <p className="text-slate-400 text-xs">
-              Role-segregated platform for Admins, Staff Supervisors, Field Delivery Workers, and Customers.
+              Demo access for customers, supervisors, couriers, and admins. These credentials do not authorize the live GPS service.
             </p>
           </div>
 
@@ -399,10 +385,10 @@ export function RegisterView({ onNavigate, onLoginSuccess }) {
 
           <div className="space-y-1">
             <h2 className="text-2xl md:text-3xl font-black text-white">
-              Create LogiTrack Account
+              Create a Demo Profile
             </h2>
             <p className="text-xs text-slate-400">
-              Select your organization role to configure access permissions.
+              Demo profiles use browser storage. Do not enter real credentials or customer information.
             </p>
           </div>
 

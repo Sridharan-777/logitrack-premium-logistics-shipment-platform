@@ -56,17 +56,17 @@ export default function WorkerWorkspaceView({
 
   const handleOpenProofModal = (shipment) => {
     setSelectedShipment(shipment);
-    setCustomerSignature(shipment.receiverName);
+    setCustomerSignature("");
     setDeliveryNote("Handed directly to recipient at doorstep. Package seals intact.");
     setShowProofModal(true);
   };
 
   const handleConfirmProof = (e) => {
     e.preventDefault();
-    if (!selectedShipment) return;
+    if (!selectedShipment || !customerSignature.trim()) return;
 
     onCompleteDelivery(selectedShipment.id, {
-      signedBy: customerSignature || selectedShipment.receiverName,
+      signedBy: customerSignature.trim(),
       note: deliveryNote,
       transportMode: activeTransportMode,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -348,6 +348,8 @@ export default function WorkerWorkspaceView({
                 {/* Worker Execution Actions */}
                 <div className="flex flex-wrap gap-3 pt-2">
                   <button
+                    disabled={shipment.status !== "Out for Delivery"}
+                    title={shipment.status !== "Out for Delivery" ? "Await supervisor dispatch before completing delivery" : "Confirm delivery"}
                     onClick={() => handleOpenProofModal(shipment)}
                     className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs md:text-sm rounded-2xl shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 transition cursor-pointer"
                   >

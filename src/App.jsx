@@ -1,4 +1,7 @@
+import { useDemoLedger } from "./hooks/useDemoLedger";
 import React, { useState, useEffect } from "react";
+import Onboarding from "./components/Onboarding";
+import LiveFleetTracking from "./components/LiveFleetTracking";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import LandingPage from "./components/LandingPage";
@@ -34,12 +37,13 @@ import { AlertCircle, CheckCircle, Upload, X } from "lucide-react";
 
 export default function App() {
   // Current view routing state
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState(() => /(?:driver|viewer)=/.test(window.location.hash) ? "fleet-live" : "landing");
 
   // Theme switching state
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem("logitrack-theme") || "dark";
+      const saved = localStorage.getItem("logitrack-theme");
+      return ["dark", "light", "cyber"].includes(saved) ? saved : "dark";
     } catch {
       return "dark";
     }
@@ -59,6 +63,13 @@ export default function App() {
   const [customsError, setCustomsError] = useState(null);
   const [searchFeedback, setSearchFeedback] = useState(null);
   const [guestSearchFeedback, setGuestSearchFeedback] = useState(null);
+  const [guestResult, setGuestResult] = useState(null);
+
+  useEffect(() => {
+    const warn = () => setSearchFeedback("Browser storage is full or unavailable. Changes may be lost after refreshing.");
+    window.addEventListener("logitrack-storage-error", warn);
+    return () => window.removeEventListener("logitrack-storage-error", warn);
+  }, []);
 
   // Active Admin Edit Shipment modal
   const [editingShipment, setEditingShipment] = useState(null);
@@ -69,15 +80,15 @@ export default function App() {
   });
 
   // State Ledgers
-  const [shipments, setShipments] = useState(INITIAL_SHIPMENTS);
-  const [staffList, setStaffList] = useState(INITIAL_STAFF_MEMBERS);
-  const [workersList, setWorkersList] = useState(INITIAL_WORKERS);
-  const [customersList, setCustomersList] = useState(INITIAL_CUSTOMERS);
-  const [fleet, setFleet] = useState(INITIAL_FLEET);
-  const [fuelLogs, setFuelLogs] = useState(INITIAL_FUEL_LOGS);
+  const [shipments, setShipments] = useDemoLedger("shipments", INITIAL_SHIPMENTS);
+  const [staffList, setStaffList] = useDemoLedger("staffList", INITIAL_STAFF_MEMBERS);
+  const [workersList, setWorkersList] = useDemoLedger("workersList", INITIAL_WORKERS);
+  const [customersList, setCustomersList] = useDemoLedger("customersList", INITIAL_CUSTOMERS);
+  const [fleet, setFleet] = useDemoLedger("fleet", INITIAL_FLEET);
+  const [fuelLogs, setFuelLogs] = useDemoLedger("fuelLogs", INITIAL_FUEL_LOGS);
 
   // Support Tickets Ledger
-  const [tickets, setTickets] = useState([
+  const [tickets, setTickets] = useDemoLedger("tickets", [
     {
       id: "TCK-3021",
       subject: "Address correction request for TRK-8924-M",
@@ -101,7 +112,7 @@ export default function App() {
   ]);
 
   // Notifications Ledger
-  const [notifications, setNotifications] = useState([
+  const [notifications, setNotifications] = useDemoLedger("notifications", [
     {
       id: "n-1",
       type: "alert",
@@ -157,11 +168,9 @@ export default function App() {
       };
       setView("worker-workspace");
     } else {
-      const isSridharan =
-        email.toLowerCase() === "24104029@nec.edu.in" ||
-        name.toLowerCase().includes("sridharan");
+      const isSridharan = email.toLowerCase() === "24104029@nec.edu.in";
       profileData = isSridharan ? { ...INITIAL_USERS.customer } : {
-        id: `usr-${Date.now()}`,
+        id: `usr-${email.toLowerCase()}`,
         name: name,
         email: email,
         phone: "+1 (555) 012-3456",
@@ -199,6 +208,9 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
+    setSelectedShipmentId(null);
+    setEditingShipment(null);
+    setResolvingHoldId(null);
     setView("landing");
   };
 
@@ -207,9 +219,13 @@ export default function App() {
     // Automatically assign to available worker (prefer two-wheeler for speed)
     const assignedWorker = workersList.find((w) => w.transportMode === "two-wheeler") || workersList[0];
     const assignedStaff = staffList[0];
+    if (!assignedWorker || !assignedStaff) {
+      throw new Error("Add at least one courier and supervisor before booking a shipment.");
+    }
 
     const enrichedShipment = {
       ...newShipment,
+      customerId: user.id,
       assignedStaffId: assignedStaff.id,
       assignedStaffName: `${assignedStaff.name} (Supervisor)`,
       assignedWorkerId: assignedWorker.id,
@@ -239,8 +255,8 @@ export default function App() {
 
   // Staff workflow status update
   const handleUpdateShipmentStatus = (shipmentId, newStatus, note = "") => {
-    setShipments(
-      shipments.map((s) => {
+    setShipments(current =>
+      current.map((s) => {
         if (s.id === shipmentId) {
           const newTimelineEvent = {
             id: `t-staff-${Date.now()}`,
@@ -253,7 +269,8 @@ export default function App() {
           return {
             ...s,
             status: newStatus,
-            receivedByCustomer: newStatus === "Delivered" ? true : s.receivedByCustomer,
+            receivedByCustomer: newStatus === "Delivered",
+            escalationStatus: newStatus === "Delivered" ? "Resolved" : s.escalationStatus,
             timeline: [newTimelineEvent, ...s.timeline],
           };
         }
@@ -274,8 +291,13 @@ export default function App() {
 
   // Worker completes doorstep delivery
   const handleWorkerCompleteDelivery = (shipmentId, proofData) => {
-    setShipments(
-      shipments.map((s) => {
+    const target = shipments.find(s => s.id === shipmentId);
+    if (!target || target.assignedWorkerId !== user.id || target.status !== "Out for Delivery" || !proofData.signedBy?.trim()) {
+      setSearchFeedback("Only an assigned, dispatched parcel with recipient confirmation can be completed.");
+      return;
+    }
+    setShipments(current =>
+      current.map((s) => {
         if (s.id === shipmentId) {
           const deliveryEvent = {
             id: `t-wk-del-${Date.now()}`,
@@ -330,8 +352,8 @@ export default function App() {
 
   // Worker reports doorstep issue
   const handleWorkerReportIssue = (shipmentId, issueData) => {
-    setShipments(
-      shipments.map((s) => {
+    setShipments(current =>
+      current.map((s) => {
         if (s.id === shipmentId) {
           const issueEvent = {
             id: `t-wk-issue-${Date.now()}`,
@@ -372,8 +394,8 @@ export default function App() {
 
   // Staff reassigns courier to consignment
   const handleReassignWorker = (shipmentId, workerId, workerName, transportMode) => {
-    setShipments(
-      shipments.map((s) => {
+    setShipments(current =>
+      current.map((s) => {
         if (s.id === shipmentId) {
           const reassignedEvent = {
             id: `t-reassign-${Date.now()}`,
@@ -398,8 +420,8 @@ export default function App() {
 
   // Staff triggers rapid redelivery
   const handleTriggerRedelivery = (shipmentId) => {
-    setShipments(
-      shipments.map((s) => {
+    setShipments(current =>
+      current.map((s) => {
         if (s.id === shipmentId) {
           const redeliverEvent = {
             id: `t-redeliv-${Date.now()}`,
@@ -412,6 +434,8 @@ export default function App() {
           return {
             ...s,
             status: "Out for Delivery",
+            receivedByCustomer: false,
+            proofOfDelivery: null,
             escalationStatus: "Normal",
             deliveryAttemptCount: (s.deliveryAttemptCount || 1) + 1,
             timeline: [redeliverEvent, ...s.timeline],
@@ -432,6 +456,9 @@ export default function App() {
   };
 
   const handleDeleteWorker = (workerId) => {
+    if (shipments.some(s => s.assignedWorkerId === workerId && s.status !== "Delivered")) {
+      setSearchFeedback("Reassign active shipments before deleting this courier."); return;
+    }
     setWorkersList(workersList.filter((w) => w.id !== workerId));
   };
 
@@ -458,6 +485,9 @@ export default function App() {
   };
 
   const handleDeleteStaff = (staffId) => {
+    if (shipments.some(s => s.assignedStaffId === staffId && s.status !== "Delivered")) {
+      setSearchFeedback("Reassign active shipments before deleting this supervisor."); return;
+    }
     setStaffList(staffList.filter((st) => st.id !== staffId));
   };
 
@@ -507,11 +537,15 @@ export default function App() {
     setNotifications([notif, ...notifications]);
   };
 
+  const visibleShipments = user?.systemRole === ROLES.USER
+    ? shipments.filter(s => s.customerId === user.id || [s.senderEmail, s.receiverEmail].some(email => email?.toLowerCase() === user.email?.toLowerCase()))
+    : user?.systemRole === ROLES.WORKER ? shipments.filter(s => s.assignedWorkerId === user.id) : shipments;
+
   // Global shipment search helper
   const handleSearchShipmentGlobal = (query) => {
     setSearchFeedback(null);
     const cleanQuery = query.trim().toUpperCase();
-    const found = shipments.find(
+    const found = visibleShipments.find(
       (s) =>
         s.id.toUpperCase() === cleanQuery ||
         s.id.toUpperCase().includes(cleanQuery) ||
@@ -529,18 +563,12 @@ export default function App() {
   // Search handler specifically on Landing Page for guest users
   const handleGuestSearchShipment = (query) => {
     setGuestSearchFeedback(null);
+    setGuestResult(null);
     const cleanQuery = query.trim().toUpperCase();
-    const found = shipments.find(
-      (s) =>
-        s.id.toUpperCase() === cleanQuery ||
-        s.id.toUpperCase().includes(cleanQuery) ||
-        s.receiverName.toUpperCase().includes(cleanQuery)
-    );
+    const found = cleanQuery ? shipments.find(s => s.id.toUpperCase() === cleanQuery) : null;
 
     if (found) {
-      setSelectedShipmentId(found.id);
-      setUser({ ...INITIAL_USERS.customer });
-      setView("track-live");
+      setGuestResult({ id: found.id, status: found.status, estimatedDelivery: found.estimatedDelivery });
     } else {
       setGuestSearchFeedback(
         `Unable to find waybill "${query}". Please check the tracking number or try demo tracking code TRK-8924-M.`
@@ -549,9 +577,9 @@ export default function App() {
   };
 
   // Drilldown to details view for a selected shipment
-  const navigateToShipment = (id) => {
+  const navigateToShipment = (id, destination = "shipment-details") => {
     setSelectedShipmentId(id);
-    setView("shipment-details");
+    setView(destination);
   };
 
   // Quick Action: Resolve customs hold trigger
@@ -571,12 +599,13 @@ export default function App() {
 
     setCustomsSuccess(true);
     setTimeout(() => {
-      setShipments(
-        shipments.map((s) => {
+      setShipments(current =>
+        current.map((s) => {
           if (s.id === resolvingHoldId) {
             return {
               ...s,
               status: "In Transit",
+              escalationStatus: "Resolved",
               estimatedDelivery: "Tomorrow by 6:00 PM",
               currentLocation: "Frankfurt Hub Departure",
               timeline: [
@@ -607,7 +636,7 @@ export default function App() {
         time: "Just now",
         read: false,
       };
-      setNotifications([resolveNotif, ...notifications]);
+      setNotifications(current => [resolveNotif, ...current]);
 
       setTickets(
         tickets.map((t) => {
@@ -624,9 +653,11 @@ export default function App() {
 
   const isAuthView = view !== "landing" && view !== "login" && view !== "register";
 
+  if (/(?:driver|viewer)=/.test(window.location.hash)) return <LiveFleetTracking />;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-sky-500/30 relative font-sans">
-      <ThreeDBackground />
+      {theme !== "light" && <ThreeDBackground />}
 
       {/* AUTHENTICATED SYSTEM LAYOUT */}
       {isAuthView && user ? (
@@ -667,7 +698,7 @@ export default function App() {
                 : view.startsWith("book-")
                 ? "Courier Booking Wizard"
                 : view === "track-live"
-                ? "Live GPS Satellite Tracking Map"
+                ? "Shipment Route Simulation"
                 : view === "my-shipments"
                 ? "Waybill Manifest Ledger"
                 : view === "shipment-details"
@@ -703,10 +734,12 @@ export default function App() {
           )}
 
           {/* Main Workspace Frame container */}
-          <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <main id="main-content" className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto">
+            <Onboarding key={user.id + user.systemRole} user={user} onNavigate={setView} />
+            {view === "fleet-live" && <LiveFleetTracking />}
             {view === "dashboard" && (
               <DashboardView
-                shipments={shipments}
+                shipments={visibleShipments}
                 notifications={notifications}
                 onNavigate={setView}
                 onSelectShipment={navigateToShipment}
@@ -715,9 +748,9 @@ export default function App() {
               />
             )}
 
-            {view === "profit-loss" && (
+            {view === "profit-loss" && user.systemRole === ROLES.ADMIN && (
               <AdminProfitLossView
-                shipments={shipments}
+                shipments={visibleShipments}
                 fuelLogs={fuelLogs}
                 staffList={staffList}
               />
@@ -732,7 +765,7 @@ export default function App() {
               />
             )}
 
-            {view === "staff-management" && (
+            {view === "staff-management" && user.systemRole === ROLES.ADMIN && (
               <AdminStaffManagementView
                 staffList={staffList}
                 workersList={workersList}
@@ -752,7 +785,7 @@ export default function App() {
             {view === "staff-workspace" && (
               <StaffWorkspaceView
                 staffUser={user}
-                shipments={shipments}
+                shipments={visibleShipments}
                 workersList={workersList}
                 customersList={customersList}
                 onUpdateShipmentStatus={handleUpdateShipmentStatus}
@@ -768,7 +801,7 @@ export default function App() {
             {view === "worker-workspace" && (
               <WorkerWorkspaceView
                 workerUser={user}
-                shipments={shipments}
+                shipments={visibleShipments}
                 onCompleteDelivery={handleWorkerCompleteDelivery}
                 onReportDeliveryIssue={handleWorkerReportIssue}
                 onUpdateTransportMode={handleWorkerUpdateTransportMode}
@@ -783,6 +816,7 @@ export default function App() {
 
             {view.startsWith("book-") && (
               <BookingFlow
+                user={user}
                 savedAddresses={user.addresses || []}
                 onBookingComplete={handleBookingComplete}
                 onNavigate={setView}
@@ -791,7 +825,7 @@ export default function App() {
 
             {view === "track-live" && (
               <TrackingView
-                shipments={shipments}
+                shipments={visibleShipments}
                 selectedShipmentId={selectedShipmentId}
                 onSelectShipment={setSelectedShipmentId}
                 onNavigate={setView}
@@ -800,20 +834,20 @@ export default function App() {
 
             {view === "my-shipments" && (
               <ShipmentsListView
-                shipments={shipments}
+                shipments={visibleShipments}
                 onSelectShipment={navigateToShipment}
                 onNavigate={setView}
-                userRole={user.systemRole}
-                onAdminEditShipment={(shipment) => setEditingShipment(shipment)}
+                user={user}
+                onQuickActionResolveHold={handleQuickActionResolveHold}
+                onEditShipment={(shipment) => setEditingShipment(shipment)}
               />
             )}
 
             {view === "shipment-details" && (
               <ShipmentDetailsView
-                shipmentId={selectedShipmentId || (shipments[0] && shipments[0].id)}
-                shipments={shipments}
-                onNavigate={setView}
-                onOpenLiveMap={(id) => {
+                shipment={visibleShipments.find(s => s.id === selectedShipmentId)}
+                onBack={() => setView("my-shipments")}
+                onTrack={(id) => {
                   setSelectedShipmentId(id);
                   setView("track-live");
                 }}
@@ -824,7 +858,7 @@ export default function App() {
             {view === "support" && (
               <SupportView
                 tickets={tickets}
-                onCreateTicket={(newT) => setTickets([newT, ...tickets])}
+                onSubmitTicket={(newT) => setTickets([newT, ...tickets])}
                 onNavigate={setView}
               />
             )}
@@ -832,9 +866,10 @@ export default function App() {
             {view === "notifications" && (
               <NotificationsView
                 notifications={notifications}
-                onMarkAsRead={(id) =>
+                onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))}
+                onToggleRead={(id) =>
                   setNotifications(
-                    notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+                    notifications.map((n) => (n.id === id ? { ...n, read: !n.read } : n))
                   )
                 }
                 onClearAll={() => setNotifications([])}
@@ -872,6 +907,7 @@ export default function App() {
         />
       )}
 
+      {view === "landing" && guestResult && <div role="dialog" aria-modal="true" aria-label="Shipment status" className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4"><section className="p-6 rounded-2xl bg-slate-900 text-slate-100"><h2 className="text-xl font-bold">{guestResult.id}</h2><p>{guestResult.status}</p><p>{guestResult.estimatedDelivery}</p><button className="gps-button mt-4" onClick={() => setGuestResult(null)}>Close</button></section></div>}
       {/* Admin Edit Shipment Master Modal */}
       {editingShipment && (
         <AdminShipmentManagerModal
@@ -990,7 +1026,7 @@ export default function App() {
 
       {/* Global AI Chatbot — floating on all pages */}
       {user && view !== "landing" && view !== "login" && view !== "register" && (
-        <AIChatbot shipments={shipments} activeShipment={shipments.find(s => s.status === "In Transit" || s.status === "Out for Delivery") || shipments[0]} />
+        <AIChatbot shipments={visibleShipments} activeShipment={visibleShipments.find(s => s.id === selectedShipmentId) || null} />
       )}
     </div>
   );

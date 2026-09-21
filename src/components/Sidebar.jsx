@@ -51,7 +51,7 @@ export default function Sidebar({
       { id: "fuel-tracker", label: "Fleet & Fuel Tracker", icon: Fuel },
       { id: "staff-management", label: "Staff & Workers CRUD", icon: Users },
       { id: "my-shipments", label: "Master Manifest & Editor", icon: Package },
-      { id: "track-live", label: "Live GPS Sat-Map", icon: Globe },
+      { id: "track-live", label: "Shipment Route Demo", icon: Globe },
       { id: "notifications", label: "Alert Board", icon: Bell, badge: unreadNotifications },
       { id: "support", label: "Advisory Desk", icon: LifeBuoy },
       { id: "profile", label: "Admin Profile", icon: User },
@@ -62,7 +62,7 @@ export default function Sidebar({
       { id: "staff-salary", label: "My Salary & Earnings", icon: Award, badgeText: "Private" },
       { id: "fuel-tracker", label: "Log Trip Fuel & Fleet", icon: Fuel },
       { id: "my-shipments", label: "Manifest Ledger", icon: Package },
-      { id: "track-live", label: "Live GPS Sat-Map", icon: Globe },
+      { id: "track-live", label: "Shipment Route Demo", icon: Globe },
       { id: "notifications", label: "Alert Board", icon: Bell, badge: unreadNotifications },
       { id: "support", label: "Advisory Desk", icon: LifeBuoy },
       { id: "profile", label: "Staff Profile", icon: User },
@@ -70,7 +70,7 @@ export default function Sidebar({
   } else if (systemRole === ROLES.WORKER) {
     menuItems = [
       { id: "worker-workspace", label: "Doorstep Runs & Vehicle", icon: Bike, badgeText: "Field" },
-      { id: "track-live", label: "Live GPS Sat-Map", icon: Globe },
+      { id: "track-live", label: "Shipment Route Demo", icon: Globe },
       { id: "fuel-tracker", label: "Log EV / Fuel Telemetry", icon: Fuel },
       { id: "notifications", label: "Alert Board", icon: Bell, badge: unreadNotifications },
       { id: "support", label: "Field Courier Helpline", icon: LifeBuoy },
@@ -81,12 +81,14 @@ export default function Sidebar({
       { id: "dashboard", label: "Dashboard Terminal", icon: LayoutDashboard },
       { id: "book-step1", label: "Book 3D Courier", icon: Truck },
       { id: "my-shipments", label: "Manifest Ledger", icon: Package },
-      { id: "track-live", label: "Live GPS Sat-Map", icon: Globe },
+      { id: "track-live", label: "Shipment Route Demo", icon: Globe },
       { id: "notifications", label: "Alert Board", icon: Bell, badge: unreadNotifications },
       { id: "support", label: "Advisory Desk", icon: LifeBuoy },
       { id: "profile", label: "Profile & Addresses", icon: User },
     ];
   }
+
+  menuItems.push({ id: "fleet-live", label: "Phone GPS Tracking", icon: MapPin });
 
   return (
     <aside
@@ -161,7 +163,7 @@ export default function Sidebar({
             <button
               key={item.id}
               id={`sidebar-nav-${item.id}`}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => { onNavigate(item.id); document.getElementById("app-sidebar")?.classList.add("-translate-x-full"); }}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
                 isActive
                   ? systemRole === ROLES.ADMIN
