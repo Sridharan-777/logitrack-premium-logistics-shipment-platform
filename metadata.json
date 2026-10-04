@@ -1,6 +1,0 @@
-{
-  "name": "LogiTrack - Premium Logistics & Shipment Platform",
-  "description": "An elite global logistics and smart courier booking terminal featuring real-time tracking, live timeline mapping, and full customer lifecycle operations.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

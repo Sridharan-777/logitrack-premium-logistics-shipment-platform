@@ -1,0 +1,21 @@
+{
+  "name": "LogiTrack 3D Logistics",
+  "short_name": "LogiTrack",
+  "description": "Secure shipment operations, customer tracking and authorized live driver GPS.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "categories": ["business", "productivity", "navigation"],
+  "icons": [
+    {
+      "src": "/icons/logitrack-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

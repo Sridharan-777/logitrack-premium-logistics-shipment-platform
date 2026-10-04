@@ -1,0 +1,9 @@
+{
+  "appId": "com.logitrack.logistics",
+  "appName": "LogiTrack 3D",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#020617"
+  }
+}

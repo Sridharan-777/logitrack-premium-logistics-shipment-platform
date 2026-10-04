@@ -1,51 +1,98 @@
-# LogiTrack
+# LogiTrack 3D
 
-React logistics workspace with customer, supervisor, courier, and admin demos, plus a separate authenticated service for real driver-phone GPS locations.
+Full-stack logistics platform with React/Vite, Express, MongoDB, JWT role authorization, shipment operations, multimodal route estimates, and protected live phone GPS.
 
-## Run locally
+## Local development
 
-Requires Node.js 22 or newer. Run:
+Prerequisites: Node.js, npm, MongoDB Community Server, and optionally MongoDB Compass.
 
-    npm install
-    npm run setup
-    npm run build
-    npm start
+Backend:
 
-Open http://localhost:3001. Setup generates a private .env containing TRACKING_OPERATOR_KEY. Copy that key into the Phone GPS Tracking operator form. It is never included in the frontend bundle. Keep .env private and out of Git.
+```powershell
+cd backend
+npm install
+Copy-Item .env.example .env
+npm run seed
+npm run dev
+```
 
-For development, run npm run server in one terminal and npm run dev in another. Vite proxies /api to port 3001.
+Frontend:
 
-## Live phone GPS
+```powershell
+cd frontend
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
 
-1. Open Phone GPS Tracking and connect using the operator key.
-2. Register the vehicle plate and name. Spaces and hyphens do not affect searching.
-3. Send the driver link privately to the assigned driver. Send the separate read-only viewing link only to people authorized to see that vehicle.
-4. On the phone, open the link and press Start sharing location. Allow location access. Keep the page open; mobile browsers may pause updates when backgrounded or locked. This is foreground web tracking, not an always-on native tracker.
-5. Search the registered plate from the operator page or open its viewing link. The map displays actual coordinates and accuracy, polls every five seconds, and marks signals older than 30 seconds as stale. It never invents a position.
-6. Press Stop sharing to clear the watcher and remove the server location. If the phone goes offline without stopping, the last known position is retained and marked stale.
+Open `http://localhost:3000`. The API and health check are at `http://localhost:3001/api` and `http://localhost:3001/api/health`.
 
-Phone connections require HTTPS. Localhost works for development on that same device; a plain HTTP LAN address does not provide a secure phone geolocation context. Deploy the Node server behind HTTPS and open that deployed URL on both devices. The app cannot find a vehicle from its plate alone: the plate must be registered and paired with a sharing phone.
+MongoDB Compass connects to `mongodb://127.0.0.1:27017`; expand the `logitrack` database after seeding.
 
-Links expire after 24 hours. Registering the same plate again replaces both links and revokes old ones. Operators can revoke and remove a vehicle. Driver and viewer tokens are separate; only token hashes are stored. The server retains only the latest coordinate, not travel history. Browser coordinates are device reports, not tamper-proof vehicle telemetry.
+## Required environment variables
 
-## Deployment
+`backend/.env`:
 
-Use a Node hosting service or VM with TLS termination, a private TRACKING_OPERATOR_KEY environment variable, and persistent storage mounted at TRACKING_DATA_DIR. Run npm ci, npm run build, then npm start. Forward traffic to PORT (default 3001). Static hosting such as GitHub Pages cannot receive or store GPS updates.
+```env
+PORT=3001
+MONGODB_URI=mongodb://127.0.0.1:27017/logitrack
+JWT_SECRET=replace-with-a-long-random-production-secret
+JWT_EXPIRES_IN=1d
+FRONTEND_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=
+TRACKING_OPERATOR_KEY=replace-with-at-least-32-random-characters
+TRACKING_DATA_DIR=data
+```
 
-This implementation uses one Node process with atomic JSON writes. Do not run multiple replicas against the same file. For a larger fleet, replace this with a database and individual operator accounts. Back up the private data directory and restrict host access. Rotating the operator key does not revoke vehicle links; revoke those separately when necessary.
+`frontend/.env`:
 
-## Workspace status
+```env
+VITE_API_URL=http://localhost:3001/api
+VITE_GOOGLE_CLIENT_ID=
+```
 
-The logistics workspace remains a demo. Role selection is not production authentication. Shipments, staffing, fuel logs, tickets, and notifications persist in this browser's local storage, not across devices. Do not enter real credentials, payment cards, or customer information into demo forms. GPS uses its own protected backend and requires an operator key or vehicle-specific capability link independently of demo roles.
+Google Sign-In stays hidden when its client ID is blank.
 
-Bookings do not collect payments; customs clearance is simulated. The animated route map is labeled as a simulation and is separate from phone GPS. Financial and payroll views are planning calculations, not accounting records. The assistant is a rule-based helper and needs no Gemini key. New users receive a role-specific guide that can be reopened.
+## Authorization
 
-## Verification
+- Admin: manages staff, workers, customers, shipments, fleet and operations.
+- Staff: manages workers and customers and performs shipment operations.
+- Worker: sees assigned deliveries and updates only assigned shipment work.
+- Customer: creates and sees only their own shipments.
 
-    npm test
-    npm run lint
-    npm run build
+The backend enforces these rules. The UI contains no role-switching shortcut.
 
-Tests cover GPS authorization, validation, stale positions, persistence, stopping, expiry and revocation; shipment detail rendering; and repaired callback contracts. Lint retains the existing TypeScript configuration and is not a complete JavaScript lint pass.
+## Maps
 
-Before deployment, verify phone permission granted/denied flows, two-device updates, background/locked-phone stale behavior, stop/revocation, and all themes at mobile and desktop widths. Automated checks do not replace physical phone acceptance testing.
+Shipment Route Simulation is an estimate. It changes vehicle types by leg and calculates ETA from road, air and sea distances and speeds. It is never presented as GPS.
+
+Phone GPS Tracking uses browser geolocation from an authorized driver link. Viewer data refreshes every five seconds, includes accuracy and timestamps, and becomes stale after 30 seconds. Phone geolocation requires HTTPS outside localhost.
+
+## Production build
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+
+cd ..\backend
+npm test
+npm start
+```
+
+The Express server serves `frontend/dist` in production. Use a public HTTPS domain, a hosted MongoDB connection, a strong JWT secret, and a private tracking operator key.
+
+## Mobile and Play Store
+
+The frontend includes a web app manifest, service worker, theme metadata and a maskable app icon, so it is installable as a PWA.
+
+Google Play does not accept a website directory directly. Publishing requires all of the following:
+
+1. Deploy the frontend/backend to a public HTTPS domain.
+2. Point `VITE_API_URL` and `FRONTEND_URL` at that domain and rebuild.
+3. Install Android Studio/Android SDK.
+4. Wrap the deployed PWA using a Trusted Web Activity or Capacitor.
+5. Generate a signed Android App Bundle (`.aab`).
+6. Create the Play Console app, complete privacy/data-safety declarations, upload screenshots and the `.aab`, and submit for review.
+
+Play review is controlled by Google and cannot be guaranteed for a same-day deadline. Do not ship the seeded passwords or development database in production.

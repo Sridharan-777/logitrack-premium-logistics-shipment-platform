@@ -4,7 +4,21 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# Environment files
 .env*
 !.env.example
+!frontend/.env.example
+!backend/.env.example
 
+# Tracking data
 data/
+backend/data/
+
+# IDE
+.vscode/
+.idea/
+
+# Local AI tooling metadata
+backend/.agents/
+backend/skills-lock.json
