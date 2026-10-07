@@ -1,7 +1,6 @@
 import { useDemoLedger } from "./hooks/useDemoLedger";
 import React, { useState, useEffect } from "react";
 import Onboarding from "./components/Onboarding";
-import LiveFleetTracking from "./components/LiveFleetTracking";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import LandingPage from "./components/LandingPage";
@@ -22,6 +21,7 @@ import AdminShipmentManagerModal from "./components/AdminShipmentManagerModal";
 import StaffWorkspaceView from "./components/StaffWorkspaceView";
 import StaffSalaryView from "./components/StaffSalaryView";
 import WorkerWorkspaceView from "./components/WorkerWorkspaceView";
+import WorkerLocationTracking, { stopWorkerTrackingDevice } from "./components/WorkerLocationTracking";
 import AIChatbot from "./components/AIChatbot";
 import ThemeSwitcher from "./components/ThemeSwitcher";
 import apiClient from "./api/client.js";
@@ -39,7 +39,7 @@ import { AlertCircle, CheckCircle, Upload, X } from "lucide-react";
 
 export default function App() {
   // Current view routing state
-  const [view, setView] = useState(() => /(?:driver|viewer)=/.test(window.location.hash) ? "fleet-live" : "landing");
+  const [view, setView] = useState("landing");
 
   // Theme switching state
   const [theme, setTheme] = useState(() => {
@@ -273,6 +273,13 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
+    if (user?.systemRole === ROLES.WORKER) {
+      window.dispatchEvent(new Event("logitrack-stop-worker-location"));
+      await Promise.allSettled([
+        stopWorkerTrackingDevice(),
+        apiClient.stopWorkerLocationShift(),
+      ]);
+    }
     await apiClient.logout().catch(() => apiClient.setToken(null));
     setUser(null);
     setSelectedShipmentId(null);
@@ -771,8 +778,6 @@ export default function App() {
 
   const isAuthView = view !== "landing" && view !== "login" && view !== "register";
 
-  if (/(?:driver|viewer)=/.test(window.location.hash)) return <LiveFleetTracking />;
-
   if (authRestoring) return <div className="min-h-screen grid place-items-center bg-slate-950 text-sky-300"><div className="glass-control rounded-2xl px-6 py-4 text-sm font-bold">Restoring secure session…</div></div>;
 
   return (
@@ -819,6 +824,12 @@ export default function App() {
                 ? "Parcel Receipt & Dispatch Console"
                 : view === "worker-workspace"
                 ? "Doorstep Delivery Runs & Vehicle Mode"
+                : view === "worker-location"
+                ? user.systemRole === ROLES.WORKER
+                  ? "Eight-Hour Duty Location Sharing"
+                  : user.systemRole === ROLES.USER
+                  ? "Assigned Courier Live Location"
+                  : "Live Worker Operations Map"
                 : view === "staff-salary"
                 ? "My Salary & Personal Compensation"
                 : view.startsWith("book-")
@@ -861,7 +872,6 @@ export default function App() {
           {/* Main Workspace Frame container */}
           <main id="main-content" className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto">
             <Onboarding key={user.id + user.systemRole} user={user} onNavigate={setView} />
-            {view === "fleet-live" && <LiveFleetTracking />}
             {view === "dashboard" && (
               <DashboardView
                 shipments={visibleShipments}
@@ -939,6 +949,10 @@ export default function App() {
               />
             )}
 
+            {view === "worker-location" && (
+              <WorkerLocationTracking user={user} />
+            )}
+
             {view === "staff-salary" && (
               <StaffSalaryView staffUser={user} />
             )}
@@ -957,7 +971,6 @@ export default function App() {
                 shipments={visibleShipments}
                 selectedShipmentId={selectedShipmentId}
                 onSelectShipment={setSelectedShipmentId}
-                onNavigate={setView}
               />
             )}
 

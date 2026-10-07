@@ -3,7 +3,10 @@
  * All API calls should go through this base configuration.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { Capacitor } from '@capacitor/core';
+
+const NATIVE_API_FALLBACK = 'https://backend-alpha-gilt-hgza2fqvm5.vercel.app/api';
+const API_BASE = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? NATIVE_API_FALLBACK : '/api');
 
 class ApiClient {
   constructor() {
@@ -25,6 +28,10 @@ class ApiClient {
       this.token = localStorage.getItem('logitrack-token');
     }
     return this.token;
+  }
+
+  getBaseURL() {
+    return this.baseURL;
   }
 
   async request(endpoint, options = {}) {
@@ -242,6 +249,34 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(ticketData),
     });
+  }
+
+  // Authenticated worker phone-location endpoints
+  async startWorkerLocationShift() {
+    return this.request('/worker-locations/shift/start', { method: 'POST' });
+  }
+
+  async updateWorkerLocation(locationData) {
+    return this.request('/worker-locations/shift/location', {
+      method: 'POST',
+      body: JSON.stringify(locationData),
+    });
+  }
+
+  async stopWorkerLocationShift() {
+    return this.request('/worker-locations/shift/stop', { method: 'POST' });
+  }
+
+  async getMyWorkerLocationShift() {
+    return this.request('/worker-locations/shift/me');
+  }
+
+  async getActiveWorkerLocations() {
+    return this.request('/worker-locations/active');
+  }
+
+  async getCustomerWorkerLocations() {
+    return this.request('/worker-locations/customer');
   }
 
   // Health check

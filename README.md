@@ -1,6 +1,6 @@
 # LogiTrack 3D
 
-Full-stack logistics platform with React/Vite, Express, MongoDB, JWT role authorization, shipment operations, multimodal route estimates, and protected live phone GPS.
+Full-stack logistics platform with React/Vite, Express, MongoDB, JWT role authorization, shipment operations, and multimodal route estimates.
 
 ## Local development
 
@@ -40,8 +40,6 @@ JWT_SECRET=replace-with-a-long-random-production-secret
 JWT_EXPIRES_IN=1d
 FRONTEND_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=
-TRACKING_OPERATOR_KEY=replace-with-at-least-32-random-characters
-TRACKING_DATA_DIR=data
 ```
 
 `frontend/.env`:
@@ -66,8 +64,6 @@ The backend enforces these rules. The UI contains no role-switching shortcut.
 
 Shipment Route Simulation is an estimate. It changes vehicle types by leg and calculates ETA from road, air and sea distances and speeds. It is never presented as GPS.
 
-Phone GPS Tracking uses browser geolocation from an authorized driver link. Viewer data refreshes every five seconds, includes accuracy and timestamps, and becomes stale after 30 seconds. Phone geolocation requires HTTPS outside localhost.
-
 ## Production build
 
 ```powershell
@@ -80,7 +76,7 @@ npm test
 npm start
 ```
 
-The Express server serves `frontend/dist` in production. Use a public HTTPS domain, a hosted MongoDB connection, a strong JWT secret, and a private tracking operator key.
+The Express server serves `frontend/dist` in production. Use a public HTTPS domain, a hosted MongoDB connection, and a strong JWT secret.
 
 ## Mobile and Play Store
 

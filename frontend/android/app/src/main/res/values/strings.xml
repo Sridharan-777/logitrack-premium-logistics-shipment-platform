@@ -4,4 +4,9 @@
     <string name="title_activity_main">LogiTrack 3D</string>
     <string name="package_name">com.logitrack.logistics</string>
     <string name="custom_url_scheme">com.logitrack.logistics</string>
+    <string name="worker_tracking_channel_name">Active delivery location</string>
+    <string name="worker_tracking_channel_description">Shows when LogiTrack is sharing a worker\'s location for an active delivery.</string>
+    <string name="worker_tracking_notification_title">LogiTrack location sharing is active</string>
+    <string name="worker_tracking_notification_text">Your location is being shared for this delivery. It stops automatically within 8 hours.</string>
+    <string name="worker_tracking_stop">Stop sharing</string>
 </resources>

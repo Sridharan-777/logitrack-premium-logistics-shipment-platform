@@ -2,6 +2,7 @@ import Shipment from '../models/Shipment.js';
 import mongoose from 'mongoose';
 import { ROLES } from '../models/User.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import { stopWorkerLocationIfNoActiveShipments } from '../services/workerLocationLifecycle.js';
 
 const referenceId = (value) => (value?._id || value)?.toString();
 
@@ -248,6 +249,10 @@ export const updateShipment = asyncHandler(async (req, res) => {
 
   await shipment.save();
 
+  if (['Delivered', 'Cancelled'].includes(shipment.status)) {
+    await stopWorkerLocationIfNoActiveShipments(shipment.assignedWorker);
+  }
+
   res.json({
     success: true,
     shipment,
@@ -281,6 +286,8 @@ export const deleteShipment = asyncHandler(async (req, res) => {
     description: `Shipment cancelled by ${req.user.name} (${req.user.role}).`,
   });
   await shipment.save();
+
+  await stopWorkerLocationIfNoActiveShipments(shipment.assignedWorker);
 
   res.json({
     success: true,
@@ -327,6 +334,10 @@ export const updateShipmentStatus = asyncHandler(async (req, res) => {
   });
 
   await shipment.save();
+
+  if (['Delivered', 'Cancelled'].includes(status)) {
+    await stopWorkerLocationIfNoActiveShipments(shipment.assignedWorker);
+  }
 
   res.json({ success: true, shipment });
 });

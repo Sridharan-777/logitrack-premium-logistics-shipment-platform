@@ -202,7 +202,7 @@ export default function LandingPage({
             Explore Your Shipment Route
           </h2>
           <p className="text-slate-300 max-w-2xl mx-auto text-base font-medium">
-            Explore animated demonstration routes. For actual vehicle locations, open Phone GPS Tracking and connect an authorized driver phone.
+            Explore animated demonstration routes across road, air, and sea transport modes.
           </p>
         </div>
 

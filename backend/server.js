@@ -16,10 +16,7 @@ import userRoutes from './src/routes/userRoutes.js';
 import shipmentRoutes from './src/routes/shipmentRoutes.js';
 import vehicleRoutes from './src/routes/vehicleRoutes.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
-
-// Preserved GPS tracking service
-import { createTrackingApp } from './src/services/trackingService.js';
-import { createMongoTrackingApp } from './src/services/mongoTrackingService.js';
+import workerLocationRoutes from './src/routes/workerLocationRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,20 +91,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/worker-locations', workerLocationRoutes);
 
-// ——— GPS Tracking (preserved from original system) ———
-if (process.env.TRACKING_OPERATOR_KEY && process.env.TRACKING_OPERATOR_KEY.length >= 32) {
-  const trackingRouter = process.env.VERCEL
-    ? createMongoTrackingApp({ operatorKey: process.env.TRACKING_OPERATOR_KEY })
-    : createTrackingApp({ operatorKey: process.env.TRACKING_OPERATOR_KEY, dataDir: path.resolve(process.env.TRACKING_DATA_DIR || path.join(__dirname, 'data')) });
-  app.use('/api/tracking', trackingRouter);
-  console.log('GPS tracking service enabled');
-} else {
-  console.log('GPS tracking service disabled (TRACKING_OPERATOR_KEY not set or too short)');
-}
-
-// Keep the generic notification/ticket router after capability-token GPS routes.
-// Its router-level JWT middleware would otherwise consume /api/tracking requests.
+// Notification and support-ticket routes.
 app.use('/api', notificationRoutes);
 
 // ——— Serve frontend in production ———
@@ -133,14 +119,20 @@ app.use('/api', (req, res) => {
 app.use(errorMiddleware);
 
 // ——— Start Server ———
-const PORT = process.env.PORT || 3001;
+import detect from 'detect-port';
 
 const startServer = async () => {
   await connectDB();
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LogiTrack API running on http://localhost:${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/api/health`);
+  const desiredPort = process.env.PORT || 3001;
+  const freePort = await detect(desiredPort);
+  if (freePort !== desiredPort) {
+    console.warn(`Port ${desiredPort} in use → switching to ${freePort}`);
+  }
+
+  app.listen(freePort, '0.0.0.0', () => {
+    console.log(`LogiTrack API running on http://localhost:${freePort}`);
+    console.log(`Health check: http://localhost:${freePort}/api/health`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 };

@@ -20,7 +20,7 @@ function getCheckpointIcon(status, location, idx, total) {
   return <MapPin className="h-3.5 w-3.5" />;
 }
 
-export default function TrackingView({ shipments, selectedShipmentId, onSelectShipment, onNavigate }) {
+export default function TrackingView({ shipments, selectedShipmentId, onSelectShipment }) {
   const [searchVal, setSearchVal] = useState("");
   const [activeShipment, setActiveShipment] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -59,9 +59,8 @@ export default function TrackingView({ shipments, selectedShipmentId, onSelectSh
 
   return (
     <div className="w-full max-w-[1600px] mx-auto font-sans space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-        <span><strong>Route simulation:</strong> animated positions are estimated, not live GPS. Icons switch between road, air, and sea legs.</span>
-        <button type="button" onClick={() => onNavigate("fleet-live")} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400">Open actual phone GPS</button>
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+        <strong>Route simulation:</strong> animated positions are estimated and icons switch between road, air, and sea legs.
       </div>
       {/* ── Compact Search Bar ── */}
       <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl p-3 shadow-xl">
