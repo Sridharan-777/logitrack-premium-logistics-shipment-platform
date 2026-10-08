@@ -81,8 +81,8 @@ export function LoginView({ onNavigate, onLoginSuccess }) {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
@@ -379,8 +379,8 @@ export function RegisterView({ onNavigate, onLoginSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !email || password.length < 6) {
-      setError("Please fill in all fields (password min 6 chars).");
+    if (!name || !email || password.length < 8) {
+      setError("Please fill in all fields (password min 8 chars).");
       return;
     }
     setLoading(true);

@@ -25,6 +25,8 @@ const dateIso = (value) => {
 
 const objectIdString = (value) => (value?._id || value)?.toString();
 
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const sanitizeDeviceId = (value) => {
   if (value === undefined || value === null || value === '') {
     return { value: '' };
@@ -360,8 +362,21 @@ export const createWorkerLocationHandlers = ({
     const at = currentTime();
     await expireOldSessions(at);
 
+    const customerFilters = [
+      { customer: req.user._id },
+      { customerId: objectIdString(req.user._id) },
+    ];
+    const customerEmail = String(req.user.email || '').trim();
+    if (customerEmail) {
+      const emailPattern = new RegExp(`^${escapeRegExp(customerEmail)}$`, 'i');
+      customerFilters.push(
+        { senderEmail: { $regex: emailPattern } },
+        { receiverEmail: { $regex: emailPattern } }
+      );
+    }
+
     const shipments = await ShipmentModel.find({
-      customer: req.user._id,
+      $or: customerFilters,
       assignedWorker: { $ne: null },
       status: { $nin: TERMINAL_SHIPMENT_STATUSES },
     })

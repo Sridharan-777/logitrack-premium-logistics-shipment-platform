@@ -59,6 +59,7 @@ export default function StaffWorkspaceView({
   const [newWorkerData, setNewWorkerData] = useState({
     name: "",
     email: "",
+    password: "",
     phone: "",
     vehicleType: "Two-Wheeler (Ather 450X EV Scooter)",
     transportMode: "two-wheeler",
@@ -71,6 +72,7 @@ export default function StaffWorkspaceView({
   const [newCustomerData, setNewCustomerData] = useState({
     name: "",
     email: "",
+    password: "",
     phone: "",
     company: "",
     location: "",
@@ -127,15 +129,18 @@ export default function StaffWorkspaceView({
     setReassignModalShipment(null);
   };
 
-  const handleCreateWorkerSubmit = (e) => {
+  const handleCreateWorkerSubmit = async (e) => {
     e.preventDefault();
-    if (!newWorkerData.name || !newWorkerData.email) return;
+    if (!newWorkerData.name || !newWorkerData.email || newWorkerData.password.length < 8) {
+      setActionFeedback("Enter the worker name, email, and a temporary password of at least 8 characters.");
+      return;
+    }
 
     const created = {
-      id: `worker-${Date.now()}`,
       name: newWorkerData.name,
       email: newWorkerData.email,
-      phone: newWorkerData.phone || "+91 90000 00000",
+      password: newWorkerData.password,
+      phone: newWorkerData.phone.trim(),
       role: `${newWorkerData.transportMode === "two-wheeler" ? "Two-Wheeler" : "Van"} Doorstep Courier`,
       avatar: newWorkerData.name.slice(0, 2).toUpperCase(),
       vehicleType: newWorkerData.vehicleType,
@@ -150,48 +155,60 @@ export default function StaffWorkspaceView({
       doorStepServiceType: newWorkerData.doorStepServiceType,
     };
 
-    onAddWorker(created);
-    setShowAddWorkerModal(false);
-    setNewWorkerData({
-      name: "",
-      email: "",
-      phone: "",
-      vehicleType: "Two-Wheeler (Ather 450X EV Scooter)",
-      transportMode: "two-wheeler",
-      zone: "Urban Delivery Sector",
-      doorStepServiceType: "Same-Day Door Delivery",
-    });
-    setActionFeedback(`New Worker "${created.name}" registered successfully!`);
+    try {
+      await onAddWorker(created);
+      setShowAddWorkerModal(false);
+      setNewWorkerData({
+        name: "",
+        email: "",
+        password: "",
+        phone: "",
+        vehicleType: "Two-Wheeler (Ather 450X EV Scooter)",
+        transportMode: "two-wheeler",
+        zone: "Urban Delivery Sector",
+        doorStepServiceType: "Same-Day Door Delivery",
+      });
+      setActionFeedback(`New Worker "${created.name}" registered successfully!`);
+    } catch (error) {
+      setActionFeedback(`Worker creation failed: ${error.message}`);
+    }
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
-  const handleCreateCustomerSubmit = (e) => {
+  const handleCreateCustomerSubmit = async (e) => {
     e.preventDefault();
-    if (!newCustomerData.name || !newCustomerData.email) return;
+    if (!newCustomerData.name || !newCustomerData.email || newCustomerData.password.length < 8) {
+      setActionFeedback("Enter the customer name, email, and a temporary password of at least 8 characters.");
+      return;
+    }
 
     const created = {
-      id: `usr-cust-${Date.now()}`,
       name: newCustomerData.name,
       email: newCustomerData.email,
-      phone: newCustomerData.phone || "+1 (555) 012-3456",
-      company: newCustomerData.company || "Enterprise Customer",
-      location: newCustomerData.location || "Global Metro",
+      password: newCustomerData.password,
+      phone: newCustomerData.phone.trim(),
+      company: newCustomerData.company.trim(),
+      location: newCustomerData.location.trim(),
       accountType: "Verified Customer",
       totalBookings: 0,
       activeParcels: 0,
-      joinedDate: "Aug 2026",
     };
 
-    onAddCustomer(created);
-    setShowAddCustomerModal(false);
-    setNewCustomerData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      location: "",
-    });
-    setActionFeedback(`Customer "${created.name}" created and verified.`);
+    try {
+      await onAddCustomer(created);
+      setShowAddCustomerModal(false);
+      setNewCustomerData({
+        name: "",
+        email: "",
+        password: "",
+        phone: "",
+        company: "",
+        location: "",
+      });
+      setActionFeedback(`Customer "${created.name}" created and verified.`);
+    } catch (error) {
+      setActionFeedback(`Customer creation failed: ${error.message}`);
+    }
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
@@ -733,6 +750,20 @@ export default function StaffWorkspaceView({
               </div>
 
               <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Temporary Login Password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength="8"
+                  placeholder="Minimum 8 characters"
+                  value={newWorkerData.password}
+                  onChange={(e) => setNewWorkerData({ ...newWorkerData, password: e.target.value })}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-300">Phone Number</label>
                 <input
                   type="text"
@@ -832,6 +863,20 @@ export default function StaffWorkspaceView({
                   placeholder="jane@organization.com"
                   value={newCustomerData.email}
                   onChange={(e) => setNewCustomerData({ ...newCustomerData, email: e.target.value })}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-sky-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Temporary Login Password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength="8"
+                  placeholder="Minimum 8 characters"
+                  value={newCustomerData.password}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, password: e.target.value })}
                   required
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-sky-400"
                 />

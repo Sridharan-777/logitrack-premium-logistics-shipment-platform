@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from "react";
 import apiClient from "../api/client.js";
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+let googleIdentityInitialization;
+let activeCredentialHandler = null;
 
 function loadGoogleIdentity() {
   if (window.google?.accounts?.id) return Promise.resolve();
@@ -23,27 +25,50 @@ function loadGoogleIdentity() {
   });
 }
 
+function initializeGoogleIdentity() {
+  if (!googleIdentityInitialization) {
+    googleIdentityInitialization = loadGoogleIdentity()
+      .then(() => {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: ({ credential }) => activeCredentialHandler?.(credential),
+          cancel_on_tap_outside: true,
+        });
+      })
+      .catch((error) => {
+        googleIdentityInitialization = undefined;
+        throw error;
+      });
+  }
+  return googleIdentityInitialization;
+}
+
 export default function GoogleSignInButton({ onSuccess, onError }) {
   const hostRef = useRef(null);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  }, [onError, onSuccess]);
 
   useEffect(() => {
     if (!clientId || !hostRef.current) return undefined;
     let active = true;
-    loadGoogleIdentity()
+    const handleCredential = async (credential) => {
+      try {
+        const result = await apiClient.googleAuth(credential);
+        onSuccessRef.current(result.user);
+      } catch (error) {
+        onErrorRef.current(error.message);
+      }
+    };
+
+    initializeGoogleIdentity()
       .then(() => {
         if (!active || !hostRef.current) return;
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async ({ credential }) => {
-            try {
-              const result = await apiClient.googleAuth(credential);
-              onSuccess(result.user);
-            } catch (error) {
-              onError(error.message);
-            }
-          },
-          cancel_on_tap_outside: true,
-        });
+        activeCredentialHandler = handleCredential;
         hostRef.current.replaceChildren();
         window.google.accounts.id.renderButton(hostRef.current, {
           type: "standard",
@@ -54,9 +79,12 @@ export default function GoogleSignInButton({ onSuccess, onError }) {
           width: Math.min(360, hostRef.current.clientWidth || 360),
         });
       })
-      .catch((error) => onError(error.message));
-    return () => { active = false; };
-  }, [onError, onSuccess]);
+      .catch((error) => onErrorRef.current(error.message));
+    return () => {
+      active = false;
+      if (activeCredentialHandler === handleCredential) activeCredentialHandler = null;
+    };
+  }, []);
 
   if (!clientId) {
     return null;

@@ -1,5 +1,18 @@
 import User, { ROLES } from '../models/User.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import bcrypt from 'bcrypt';
+
+const MIN_PASSWORD_LENGTH = 8;
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const BLOCKED_CREATE_FIELDS = new Set([
+  '_id',
+  '__v',
+  'active',
+  'createdAt',
+  'updatedAt',
+  'googleId',
+  'passwordHash',
+]);
 
 /**
  * GET /api/users
@@ -21,9 +34,10 @@ export const getUsers = asyncHandler(async (req, res) => {
   }
 
   if (search) {
+    const safeSearch = escapeRegExp(String(search).slice(0, 100));
     filter.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } },
+      { name: { $regex: safeSearch, $options: 'i' } },
+      { email: { $regex: safeSearch, $options: 'i' } },
     ];
   }
 
@@ -80,14 +94,25 @@ export const createUser = asyncHandler(async (req, res) => {
   const { name, email, password, role, phone, company, location, jobTitle, ...otherFields } =
     req.body;
 
-  if (!name || !email) {
+  if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !email.trim()) {
     return res.status(400).json({
       success: false,
       message: 'Name and email are required.',
     });
   }
 
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({
+      success: false,
+      message: `A temporary password of at least ${MIN_PASSWORD_LENGTH} characters is required.`,
+    });
+  }
+
   const targetRole = (role || 'CUSTOMER').toUpperCase();
+
+  if (!Object.values(ROLES).includes(targetRole)) {
+    return res.status(400).json({ success: false, message: 'Invalid account role.' });
+  }
 
   // Permission checks
   if (req.user.role === ROLES.STAFF) {
@@ -116,6 +141,9 @@ export const createUser = asyncHandler(async (req, res) => {
     });
   }
 
+  const safeOtherFields = Object.fromEntries(
+    Object.entries(otherFields).filter(([key]) => !BLOCKED_CREATE_FIELDS.has(key))
+  );
   const userData = {
     name,
     email: email.toLowerCase(),
@@ -125,13 +153,9 @@ export const createUser = asyncHandler(async (req, res) => {
     location: location || '',
     jobTitle: jobTitle || '',
     memberSince: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-    ...otherFields,
+    ...safeOtherFields,
+    passwordHash: password,
   };
-
-  // Only set password if provided
-  if (password) {
-    userData.passwordHash = password;
-  }
 
   const user = await User.create(userData);
 
@@ -197,19 +221,32 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
 
   // Password resets through user management are restricted to administrators.
-  if (req.body.password) {
+  const requestedPassword = req.body.password;
+  delete req.body.password;
+  delete req.body.passwordHash;
+  if (requestedPassword) {
     if (req.user.role !== ROLES.ADMIN) {
-      delete req.body.password;
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can reset another user password.',
+      });
+    }
+    if (typeof requestedPassword !== 'string' || requestedPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      });
     } else {
-      req.body.passwordHash = req.body.password;
-      delete req.body.password;
+      req.body.passwordHash = await bcrypt.hash(requestedPassword, 12);
     }
   }
 
   // Prevent sensitive field manipulation
   delete req.body.googleId;
-  if (req.user.role !== ROLES.ADMIN) delete req.body.passwordHash;
   delete req.body._id;
+  delete req.body.__v;
+  delete req.body.createdAt;
+  delete req.body.updatedAt;
 
   const allowedUpdates = { ...req.body };
 

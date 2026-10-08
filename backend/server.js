@@ -119,20 +119,16 @@ app.use('/api', (req, res) => {
 app.use(errorMiddleware);
 
 // ——— Start Server ———
-import detect from 'detect-port';
-
 const startServer = async () => {
   await connectDB();
 
-  const desiredPort = process.env.PORT || 3001;
-  const freePort = await detect(desiredPort);
-  if (freePort !== desiredPort) {
-    console.warn(`Port ${desiredPort} in use → switching to ${freePort}`);
+  const port = Number.parseInt(process.env.PORT || '3001', 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('PORT must be a valid TCP port number.');
   }
-
-  app.listen(freePort, '0.0.0.0', () => {
-    console.log(`LogiTrack API running on http://localhost:${freePort}`);
-    console.log(`Health check: http://localhost:${freePort}/api/health`);
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`LogiTrack API running on http://localhost:${port}`);
+    console.log(`Health check: http://localhost:${port}/api/health`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 };

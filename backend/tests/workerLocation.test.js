@@ -258,9 +258,15 @@ test('customer response is scoped to active assignments and omits worker phone/d
   });
   const response = createResponse();
 
-  await handlers.getCustomerWorkers({ user: { _id: 'customer-1' } }, response);
+  await handlers.getCustomerWorkers(
+    { user: { _id: 'customer-1', email: 'customer@example.com' } },
+    response
+  );
 
-  assert.equal(shipmentFilter.customer, 'customer-1');
+  assert.equal(shipmentFilter.$or[0].customer, 'customer-1');
+  assert.equal(shipmentFilter.$or[1].customerId, 'customer-1');
+  assert.equal(shipmentFilter.$or[2].senderEmail.$regex.test('CUSTOMER@example.com'), true);
+  assert.equal(shipmentFilter.$or[3].receiverEmail.$regex.test('customer@example.com'), true);
   assert.deepEqual(shipmentFilter.status, { $nin: ['Delivered', 'Cancelled'] });
   assert.equal(response.body.count, 1);
   assert.equal(response.body.workers[0].shipments[0].trackingNumber, 'TRK-100-A');

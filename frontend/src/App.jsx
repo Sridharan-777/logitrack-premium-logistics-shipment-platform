@@ -515,9 +515,14 @@ export default function App() {
   // CRUD for Workers (Shared by Admin & Staff)
   const handleAddWorker = async (newWorker) => {
     try {
-      const { user: created } = await apiClient.createUser({ ...newWorker, role: "WORKER", password: newWorker.password || "Worker@123" });
-      setWorkersList(current => [normalizeApiUser(created), ...current]);
-    } catch (error) { setSearchFeedback(error.message); }
+      const { user: created } = await apiClient.createUser({ ...newWorker, role: "WORKER", password: newWorker.password });
+      const normalized = normalizeApiUser(created);
+      setWorkersList(current => [normalized, ...current]);
+      return normalized;
+    } catch (error) {
+      setSearchFeedback(error.message);
+      throw error;
+    }
   };
 
   const handleUpdateWorker = async (updated) => {
@@ -538,9 +543,14 @@ export default function App() {
   // CRUD for Customers (Shared by Admin & Staff)
   const handleAddCustomer = async (newCustomer) => {
     try {
-      const { user: created } = await apiClient.createUser({ ...newCustomer, role: "CUSTOMER", password: newCustomer.password || "Customer@123" });
-      setCustomersList(current => [normalizeApiUser(created), ...current]);
-    } catch (error) { setSearchFeedback(error.message); }
+      const { user: created } = await apiClient.createUser({ ...newCustomer, role: "CUSTOMER", password: newCustomer.password });
+      const normalized = normalizeApiUser(created);
+      setCustomersList(current => [normalized, ...current]);
+      return normalized;
+    } catch (error) {
+      setSearchFeedback(error.message);
+      throw error;
+    }
   };
 
   const handleUpdateCustomer = async (updated) => {
@@ -558,9 +568,14 @@ export default function App() {
   // CRUD for Staff (Admin Only)
   const handleAddStaff = async (newStaff) => {
     try {
-      const { user: created } = await apiClient.createUser({ ...newStaff, role: "STAFF", jobTitle: newStaff.role, password: newStaff.password || "Staff@123" });
-      setStaffList(current => [normalizeApiUser(created), ...current]);
-    } catch (error) { setSearchFeedback(error.message); }
+      const { user: created } = await apiClient.createUser({ ...newStaff, role: "STAFF", jobTitle: newStaff.role, password: newStaff.password });
+      const normalized = normalizeApiUser(created);
+      setStaffList(current => [normalized, ...current]);
+      return normalized;
+    } catch (error) {
+      setSearchFeedback(error.message);
+      throw error;
+    }
   };
 
   const handleUpdateStaff = async (updated) => {

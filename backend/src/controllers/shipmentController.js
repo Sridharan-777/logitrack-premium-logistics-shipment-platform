@@ -5,6 +5,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import { stopWorkerLocationIfNoActiveShipments } from '../services/workerLocationLifecycle.js';
 
 const referenceId = (value) => (value?._id || value)?.toString();
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * GET /api/shipments
@@ -16,11 +17,12 @@ export const getShipments = asyncHandler(async (req, res) => {
 
   // Role-based filtering
   if (req.user.role === ROLES.CUSTOMER) {
+    const exactEmail = new RegExp(`^${escapeRegExp(req.user.email)}$`, 'i');
     filter.$or = [
       { customer: req.user._id },
       { customerId: req.user._id.toString() },
-      { senderEmail: { $regex: new RegExp(`^${req.user.email}$`, 'i') } },
-      { receiverEmail: { $regex: new RegExp(`^${req.user.email}$`, 'i') } },
+      { senderEmail: { $regex: exactEmail } },
+      { receiverEmail: { $regex: exactEmail } },
     ];
   } else if (req.user.role === ROLES.WORKER) {
     filter.$or = [
@@ -35,11 +37,12 @@ export const getShipments = asyncHandler(async (req, res) => {
   }
 
   if (search) {
+    const safeSearch = escapeRegExp(String(search).slice(0, 100));
     const searchFilter = {
       $or: [
-        { trackingNumber: { $regex: search, $options: 'i' } },
-        { receiverName: { $regex: search, $options: 'i' } },
-        { senderName: { $regex: search, $options: 'i' } },
+        { trackingNumber: { $regex: safeSearch, $options: 'i' } },
+        { receiverName: { $regex: safeSearch, $options: 'i' } },
+        { senderName: { $regex: safeSearch, $options: 'i' } },
       ],
     };
     // Combine with existing filter

@@ -46,6 +46,8 @@ export default function AdminStaffManagementView({
   // Creation Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createType, setCreateType] = useState("worker"); // 'staff', 'worker', 'customer'
+  const [createError, setCreateError] = useState("");
+  const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
     email: "",
@@ -57,7 +59,7 @@ export default function AdminStaffManagementView({
     transportMode: "two-wheeler",
     monthlyBaseSalary: "3800",
     tripBonusRate: "35",
-    zone: "Metro Zone",
+    zone: "",
   });
 
   const totalPayrollGross = staffList.reduce((sum, st) => {
@@ -80,67 +82,74 @@ export default function AdminStaffManagementView({
     }
   };
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!createForm.name || !createForm.email) return;
+    setCreateError("");
+    if (!createForm.name || !createForm.email || createForm.password.length < 8) {
+      setCreateError("Name, email, and a temporary password of at least 8 characters are required.");
+      return;
+    }
 
-    if (createType === "staff") {
-      const newStaff = {
-        id: `staff-${Date.now()}`,
-        name: createForm.name,
-        email: createForm.email,
-        phone: createForm.phone || "+49 69 0000 1111",
-        role: createForm.role || "Operations Logistics Officer",
-        avatar: createForm.name.slice(0, 2).toUpperCase(),
-        assignedVehicle: createForm.vehicleType || "Fleet Semi-Truck",
-        monthlyBaseSalary: parseFloat(createForm.monthlyBaseSalary) || 3800,
-        hourlyRate: 25.0,
-        tripBonusRate: parseFloat(createForm.tripBonusRate) || 35,
-        completedTripsThisMonth: 0,
-        hoursWorkedThisMonth: 160,
-        overtimeHours: 0,
-        rating: 5.0,
-        status: "Active Duty",
-        zone: createForm.zone || "Central Logistics Hub",
-        deductions: 520,
-        lastPayoutDate: "08/31/2026",
-        paymentMethod: "Direct Bank Transfer",
-      };
-      onAddStaff({ ...newStaff, password: createForm.password });
-    } else if (createType === "worker") {
-      const newWorker = {
-        id: `worker-${Date.now()}`,
-        name: createForm.name,
-        email: createForm.email,
-        phone: createForm.phone || "+91 98401 00000",
-        role: `${createForm.transportMode === "two-wheeler" ? "Rapid Two-Wheeler" : "Van"} Door Courier`,
-        avatar: createForm.name.slice(0, 2).toUpperCase(),
-        vehicleType: createForm.vehicleType || "Two-Wheeler (Ather 450X EV Scooter)",
-        transportMode: createForm.transportMode || "two-wheeler",
-        zone: createForm.zone || "Metro Zone",
-        activeDeliveriesCount: 0,
-        completedToday: 0,
-        rating: 5.0,
-        status: "Available for Dispatch",
-        batteryLevel: 100,
-        dailyEarnings: 0,
-        doorStepServiceType: "Door-to-Door Delivery",
-      };
-      onAddWorker({ ...newWorker, password: createForm.password });
-    } else {
-      const newCust = {
-        id: `usr-cust-${Date.now()}`,
-        name: createForm.name,
-        email: createForm.email,
-        phone: createForm.phone || "+1 (555) 000-1111",
-        company: createForm.company || "Enterprise Partner",
-        location: createForm.zone || "Global City",
-        accountType: "Verified Customer",
-        totalBookings: 0,
-        activeParcels: 0,
-        joinedDate: "Aug 2026",
-      };
-      onAddCustomer({ ...newCust, password: createForm.password });
+    setCreating(true);
+    try {
+      if (createType === "staff") {
+        await onAddStaff({
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          phone: createForm.phone.trim(),
+          role: createForm.role || "Operations Logistics Officer",
+          avatar: createForm.name.slice(0, 2).toUpperCase(),
+          assignedVehicle: createForm.vehicleType || "",
+          monthlyBaseSalary: parseFloat(createForm.monthlyBaseSalary) || 0,
+          hourlyRate: 0,
+          tripBonusRate: parseFloat(createForm.tripBonusRate) || 0,
+          completedTripsThisMonth: 0,
+          hoursWorkedThisMonth: 0,
+          overtimeHours: 0,
+          rating: 5.0,
+          status: "Active Duty",
+          zone: createForm.zone.trim(),
+          deductions: 0,
+          lastPayoutDate: "",
+          paymentMethod: "",
+        });
+      } else if (createType === "worker") {
+        await onAddWorker({
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          phone: createForm.phone.trim(),
+          role: `${createForm.transportMode === "two-wheeler" ? "Rapid Two-Wheeler" : "Van"} Door Courier`,
+          avatar: createForm.name.slice(0, 2).toUpperCase(),
+          vehicleType: createForm.vehicleType || "Two-Wheeler (Ather 450X EV Scooter)",
+          transportMode: createForm.transportMode || "two-wheeler",
+          zone: createForm.zone.trim(),
+          activeDeliveriesCount: 0,
+          completedToday: 0,
+          rating: 5.0,
+          status: "Available for Dispatch",
+          batteryLevel: 100,
+          dailyEarnings: 0,
+          doorStepServiceType: "Door-to-Door Delivery",
+        });
+      } else {
+        await onAddCustomer({
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          phone: createForm.phone.trim(),
+          company: createForm.company.trim(),
+          location: createForm.zone.trim(),
+          accountType: "Verified Customer",
+          totalBookings: 0,
+          activeParcels: 0,
+        });
+      }
+    } catch (error) {
+      setCreateError(error.message);
+      setCreating(false);
+      return;
     }
 
     setShowCreateModal(false);
@@ -155,8 +164,9 @@ export default function AdminStaffManagementView({
       transportMode: "two-wheeler",
       monthlyBaseSalary: "3800",
       tripBonusRate: "35",
-      zone: "Metro Zone",
+      zone: "",
     });
+    setCreating(false);
   };
 
   return (
@@ -179,6 +189,7 @@ export default function AdminStaffManagementView({
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => {
+                setCreateError("");
                 setCreateType(activeTab === "staff" ? "staff" : activeTab === "workers" ? "worker" : "customer");
                 setShowCreateModal(true);
               }}
@@ -479,8 +490,10 @@ export default function AdminStaffManagementView({
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-300">Temporary Login Password</label>
-                <input type="password" minLength="6" required value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} placeholder="Minimum 6 characters" className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-sky-400" />
+                <input type="password" autoComplete="new-password" minLength="8" required value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} placeholder="Minimum 8 characters" className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-sky-400" />
               </div>
+
+              {createError ? <p role="alert" className="rounded-xl border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-200">{createError}</p> : null}
 
               {createType === "worker" && (
                 <div className="space-y-1">
@@ -547,16 +560,20 @@ export default function AdminStaffManagementView({
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setCreateError("");
+                    setShowCreateModal(false);
+                  }}
                   className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs rounded-xl transition shadow-lg shadow-sky-500/20"
+                  disabled={creating}
+                  className="flex-1 py-3 bg-sky-500 hover:bg-sky-400 disabled:cursor-wait disabled:opacity-60 text-slate-950 font-black text-xs rounded-xl transition shadow-lg shadow-sky-500/20"
                 >
-                  Save Entry
+                  {creating ? "Creating…" : "Save Entry"}
                 </button>
               </div>
             </form>

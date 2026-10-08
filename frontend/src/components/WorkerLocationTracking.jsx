@@ -168,7 +168,7 @@ function StatusBadge({ state }) {
   );
 }
 
-function WorkerLocationMap({ records, selectedId, onSelect }) {
+function WorkerLocationMap({ records, selectedId, onSelect, showLabels }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const layersRef = useRef(new Map());
@@ -240,7 +240,7 @@ function WorkerLocationMap({ records, selectedId, onSelect }) {
         const detail = document.createElement("div");
         detail.textContent = `${record.vehiclePlate} · ${statusStyle(state).label}`;
         tooltip.append(name, detail);
-        marker.bindTooltip(tooltip, { direction: "top", offset: [0, -8] });
+        marker.bindTooltip(tooltip, { direction: "top", offset: [0, -8], permanent: showLabels, opacity: 0.95 });
         marker.on("click", () => onSelect?.(record.id));
         layers = { marker, accuracy };
         layersRef.current.set(record.id, layers);
@@ -688,7 +688,7 @@ function OperationsTrackingPanel({ customerView = false }) {
         <div className="grid min-h-[420px] place-items-center rounded-3xl border border-slate-700 bg-slate-900/70"><RefreshCw className="h-8 w-8 animate-spin text-sky-400" aria-label="Loading worker locations" /></div>
       ) : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
-          <WorkerLocationMap records={records} selectedId={selectedId} onSelect={setSelectedId} />
+          <WorkerLocationMap records={records} selectedId={selectedId} onSelect={setSelectedId} showLabels={!customerView} />
           <section className="max-h-[480px] space-y-3 overflow-y-auto pr-1" aria-label={customerView ? "Assigned couriers" : "Worker tracking status"}>
             {records.length === 0 ? (
               <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-6 text-center">
