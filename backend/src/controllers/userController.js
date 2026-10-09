@@ -1,6 +1,7 @@
 import User, { ROLES } from '../models/User.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import bcrypt from 'bcrypt';
+import { revokeWorkerLocationSession } from '../services/workerLocationLifecycle.js';
 
 const MIN_PASSWORD_LENGTH = 8;
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -255,6 +256,13 @@ export const updateUser = asyncHandler(async (req, res) => {
     runValidators: true,
   });
 
+  if (
+    user.role === ROLES.WORKER &&
+    (!updatedUser.active || updatedUser.role !== ROLES.WORKER)
+  ) {
+    await revokeWorkerLocationSession(user._id);
+  }
+
   res.json({
     success: true,
     user: updatedUser,
@@ -303,6 +311,9 @@ export const deleteUser = asyncHandler(async (req, res) => {
   // Soft delete — set active to false
   user.active = false;
   await user.save();
+  if (user.role === ROLES.WORKER) {
+    await revokeWorkerLocationSession(user._id);
+  }
 
   res.json({
     success: true,

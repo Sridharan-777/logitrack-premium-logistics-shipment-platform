@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import android.text.TextUtils;
 
 import androidx.core.content.ContextCompat;
@@ -17,6 +18,11 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @CapacitorPlugin(
     name = "WorkerTracking",
@@ -42,13 +48,34 @@ public class WorkerTrackingPlugin extends Plugin {
         }
 
         String apiUrl = normalizeApiUrl(call.getString("apiUrl"));
-        String token = normalizeToken(call.getString("token"));
+        String trackingCredential = normalizeTrackingCredential(call.getString("trackingCredential"));
+        String workerId = normalizeIdentifier(call.getString("workerId"));
+        Long expiresAtMillis = call.getLong("expiresAt");
+        String deviceId = createStableDeviceId();
         if (apiUrl == null) {
             call.reject("A valid HTTPS API URL is required.");
             return;
         }
-        if (token == null) {
-            call.reject("A valid signed-in worker token is required.");
+        if (trackingCredential == null) {
+            call.reject("A valid shift-scoped tracking credential is required.");
+            return;
+        }
+        if (workerId == null) {
+            call.reject("A valid worker identifier is required.");
+            return;
+        }
+        if (expiresAtMillis == null || expiresAtMillis <= System.currentTimeMillis()) {
+            call.reject("The tracking shift has already expired.");
+            return;
+        }
+        if (deviceId == null) {
+            call.reject("This Android device could not be identified securely.");
+            return;
+        }
+
+        SecureTrackingStore.Session activeSession = SecureTrackingStore.load(getContext());
+        if (activeSession != null && !activeSession.workerId.equals(workerId)) {
+            call.reject("Another worker already has active tracking on this device. Stop it before switching accounts.");
             return;
         }
 
@@ -91,24 +118,60 @@ public class WorkerTrackingPlugin extends Plugin {
 
     private void launchTrackingService(PluginCall call) {
         String apiUrl = normalizeApiUrl(call.getString("apiUrl"));
-        String token = normalizeToken(call.getString("token"));
-        if (apiUrl == null || token == null) {
-            call.reject("The tracking request is incomplete. Sign in as a worker and try again.");
+        String trackingCredential = normalizeTrackingCredential(call.getString("trackingCredential"));
+        String workerId = normalizeIdentifier(call.getString("workerId"));
+        Long expiresAtMillis = call.getLong("expiresAt");
+        String deviceId = createStableDeviceId();
+        if (
+            apiUrl == null
+                || trackingCredential == null
+                || workerId == null
+                || deviceId == null
+                || expiresAtMillis == null
+                || expiresAtMillis <= System.currentTimeMillis()
+        ) {
+            call.reject("The tracking request is incomplete or expired. Sign in as a worker and try again.");
+            return;
+        }
+
+        SecureTrackingStore.Session activeSession = SecureTrackingStore.load(getContext());
+        if (activeSession != null && !activeSession.workerId.equals(workerId)) {
+            call.reject("Another worker already has active tracking on this device. Stop it before switching accounts.");
+            return;
+        }
+
+        SecureTrackingStore.Session session = new SecureTrackingStore.Session(
+            apiUrl,
+            trackingCredential,
+            workerId,
+            deviceId,
+            expiresAtMillis
+        );
+        try {
+            SecureTrackingStore.save(getContext(), session);
+        } catch (GeneralSecurityException exception) {
+            call.reject("Android could not protect the tracking credential on this device.");
             return;
         }
 
         Intent intent = new Intent(getContext(), WorkerTrackingService.class);
         intent.setAction(WorkerTrackingService.ACTION_START);
         intent.putExtra(WorkerTrackingService.EXTRA_API_URL, apiUrl);
-        intent.putExtra(WorkerTrackingService.EXTRA_WORKER_TOKEN, token);
+        intent.putExtra(WorkerTrackingService.EXTRA_TRACKING_CREDENTIAL, trackingCredential);
+        intent.putExtra(WorkerTrackingService.EXTRA_WORKER_ID, workerId);
+        intent.putExtra(WorkerTrackingService.EXTRA_DEVICE_ID, deviceId);
+        intent.putExtra(WorkerTrackingService.EXTRA_EXPIRES_AT, expiresAtMillis);
 
         try {
             ContextCompat.startForegroundService(getContext(), intent);
             JSObject result = new JSObject();
             result.put("tracking", true);
-            result.put("expiresAt", System.currentTimeMillis() + WorkerTrackingService.SESSION_DURATION_MILLIS);
+            result.put("workerId", workerId);
+            result.put("deviceId", deviceId);
+            result.put("expiresAt", expiresAtMillis);
             call.resolve(result);
         } catch (IllegalStateException | SecurityException exception) {
+            SecureTrackingStore.clear(getContext());
             call.reject("Location sharing could not start. Keep LogiTrack visible and try again.");
         }
     }
@@ -118,6 +181,17 @@ public class WorkerTrackingPlugin extends Plugin {
         WorkerTrackingService.stop(getContext());
         JSObject result = new JSObject();
         result.put("tracking", false);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void getStatus(PluginCall call) {
+        SecureTrackingStore.Session session = SecureTrackingStore.load(getContext());
+        JSObject result = new JSObject();
+        result.put("tracking", session != null);
+        result.put("workerId", session == null ? "" : session.workerId);
+        result.put("deviceId", session == null ? "" : session.deviceId);
+        result.put("expiresAt", session == null ? 0L : session.expiresAtMillis);
         call.resolve(result);
     }
 
@@ -146,12 +220,51 @@ public class WorkerTrackingPlugin extends Plugin {
         return value;
     }
 
-    private static String normalizeToken(String rawValue) {
+    private static String normalizeTrackingCredential(String rawValue) {
         if (TextUtils.isEmpty(rawValue)) {
             return null;
         }
 
         String value = rawValue.trim();
-        return value.length() > 8192 ? null : value;
+        return value.length() == 0 || value.length() > 8192 ? null : value;
+    }
+
+    private static String normalizeIdentifier(String rawValue) {
+        if (TextUtils.isEmpty(rawValue)) {
+            return null;
+        }
+
+        String value = rawValue.trim();
+        if (value.length() == 0 || value.length() > 128 || !value.matches("[A-Za-z0-9._:-]+")) {
+            return null;
+        }
+        return value;
+    }
+
+    private String createStableDeviceId() {
+        String androidId = Settings.Secure.getString(
+            getContext().getContentResolver(),
+            Settings.Secure.ANDROID_ID
+        );
+        if (TextUtils.isEmpty(androidId)) {
+            return null;
+        }
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(
+                (getContext().getPackageName() + ":" + androidId)
+                    .getBytes(StandardCharsets.UTF_8)
+            );
+            StringBuilder result = new StringBuilder("android-");
+            for (byte value : hash) {
+                int unsigned = value & 0xff;
+                result.append(Character.forDigit(unsigned >>> 4, 16));
+                result.append(Character.forDigit(unsigned & 0x0f, 16));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            return null;
+        }
     }
 }

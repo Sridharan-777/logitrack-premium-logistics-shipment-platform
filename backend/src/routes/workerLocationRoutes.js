@@ -8,9 +8,21 @@ import {
   updateLocation,
 } from '../controllers/workerLocationController.js';
 import { authorizeRoles, protect } from '../middleware/authMiddleware.js';
+import { protectWorkerLocationCredential } from '../middleware/workerLocationCredentialMiddleware.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = express.Router();
+
+router.post(
+  '/shift/device/location',
+  asyncHandler(protectWorkerLocationCredential('location:update')),
+  asyncHandler(updateLocation)
+);
+router.post(
+  '/shift/device/stop',
+  asyncHandler(protectWorkerLocationCredential('location:stop')),
+  asyncHandler(stopShift)
+);
 
 router.use(protect);
 

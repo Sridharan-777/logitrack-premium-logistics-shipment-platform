@@ -69,6 +69,15 @@ const workerLocationSessionSchema = new mongoose.Schema(
       maxlength: 128,
       default: '',
     },
+    deviceCredentialHash: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    deviceCredentialIssuedAt: {
+      type: Date,
+      default: null,
+    },
     lastLocation: {
       type: lastLocationSchema,
       default: null,
@@ -78,6 +87,7 @@ const workerLocationSessionSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: {
       transform(doc, ret) {
+        delete ret.deviceCredentialHash;
         delete ret.__v;
         return ret;
       },
@@ -86,6 +96,7 @@ const workerLocationSessionSchema = new mongoose.Schema(
 );
 
 workerLocationSessionSchema.index({ active: 1, expiresAt: 1 });
+workerLocationSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const WorkerLocationSession = mongoose.model(
   'WorkerLocationSession',

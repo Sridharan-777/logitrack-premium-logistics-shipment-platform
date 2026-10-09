@@ -26,6 +26,33 @@ const WorkerTracking = registerPlugin("WorkerTracking");
 const POLL_INTERVAL_MS = 8_000;
 const LIVE_AFTER_MS = 30_000;
 
+const emptyNativeTrackingStatus = () => ({
+  available: false,
+  tracking: false,
+  workerId: "",
+  deviceId: "",
+  expiresAt: null,
+});
+
+export async function getNativeWorkerTrackingStatus() {
+  if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("WorkerTracking")) {
+    return emptyNativeTrackingStatus();
+  }
+
+  try {
+    const status = await WorkerTracking.getStatus();
+    return {
+      available: true,
+      tracking: Boolean(status?.tracking ?? status?.active),
+      workerId: String(status?.workerId || ""),
+      deviceId: String(status?.deviceId || ""),
+      expiresAt: status?.expiresAt || null,
+    };
+  } catch {
+    return { ...emptyNativeTrackingStatus(), available: true };
+  }
+}
+
 export async function stopWorkerTrackingDevice() {
   if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("WorkerTracking")) {
     await WorkerTracking.stopTracking();
@@ -303,7 +330,7 @@ function Metric({ icon: Icon, label, value, tone = "text-sky-300" }) {
   );
 }
 
-function WorkerShiftPanel() {
+function WorkerShiftPanel({ user }) {
   const [session, setSession] = useState(null);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -318,6 +345,7 @@ function WorkerShiftPanel() {
   const sendingRef = useRef(false);
 
   const nativeTrackingAvailable = Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("WorkerTracking");
+  const workerId = String(user?.id || user?._id || "");
   const state = trackingState(session, clock);
   const isActive = ["LIVE", "STALE", "WAITING"].includes(state);
 
@@ -333,17 +361,38 @@ function WorkerShiftPanel() {
   const refreshSession = useCallback(async (quiet = false) => {
     try {
       const data = await apiClient.getMyWorkerLocationShift();
-      setSession(normalizeSession(data.session));
+      const nextSession = normalizeSession(data.session);
+      setSession(nextSession);
       if (!quiet) setError("");
+      return nextSession;
     } catch (requestError) {
       if (!quiet) setError(requestError.message);
+      return null;
     } finally {
       if (!quiet) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshSession();
+    let mounted = true;
+    const initialize = async () => {
+      await refreshSession();
+      if (!mounted || !nativeTrackingAvailable) return;
+
+      const nativeStatus = await getNativeWorkerTrackingStatus();
+      if (!mounted || !nativeStatus.tracking) return;
+
+      if (!workerId || !nativeStatus.workerId || nativeStatus.workerId !== workerId) {
+        setError("A different worker's duty session is already active on this phone. Stop it from the Android notification before starting another shift.");
+        return;
+      }
+
+      setCollector("native");
+      setConsent(true);
+      setMessage("Android background GPS is active and will continue if you sign out or close the app.");
+    };
+
+    initialize();
     const poll = window.setInterval(() => refreshSession(true), POLL_INTERVAL_MS);
     const timer = window.setInterval(() => setClock(Date.now()), 1_000);
     const stopLocalCollector = () => {
@@ -352,12 +401,13 @@ function WorkerShiftPanel() {
     };
     window.addEventListener("logitrack-stop-worker-location", stopLocalCollector);
     return () => {
+      mounted = false;
       window.clearInterval(poll);
       window.clearInterval(timer);
       window.removeEventListener("logitrack-stop-worker-location", stopLocalCollector);
       stopBrowserCollector();
     };
-  }, [refreshSession, stopBrowserCollector]);
+  }, [nativeTrackingAvailable, refreshSession, stopBrowserCollector, workerId]);
 
   const sendBrowserPosition = useCallback(async () => {
     const position = latestPositionRef.current;
@@ -415,11 +465,41 @@ function WorkerShiftPanel() {
 
     try {
       if (nativeTrackingAvailable) {
-        const startData = await apiClient.startWorkerLocationShift();
+        if (!workerId) {
+          throw new Error("Your worker account identity is unavailable. Sign in again before starting location sharing.");
+        }
+
+        const nativeStatus = await getNativeWorkerTrackingStatus();
+        if (nativeStatus.tracking) {
+          if (!nativeStatus.workerId || nativeStatus.workerId !== workerId) {
+            throw new Error("A different worker's duty session is already active on this phone. Stop it from the Android notification first.");
+          }
+          setCollector("native");
+          setMessage("Android background GPS is already active for this worker.");
+          await refreshSession(true);
+          return;
+        }
+        if (!nativeStatus.deviceId) {
+          throw new Error("This phone could not provide its secure tracking device ID. Restart the Android app and try again.");
+        }
+
+        const startData = await apiClient.startWorkerLocationShift({
+          background: true,
+          deviceId: nativeStatus.deviceId,
+        });
+        const deviceCredential = startData.deviceCredential;
+        const serverExpiresAt = dateValue(deviceCredential?.expiresAt)?.getTime() || 0;
+        if (!deviceCredential?.token || serverExpiresAt <= Date.now()) {
+          await apiClient.stopWorkerLocationShift().catch(() => {});
+          throw new Error("The server did not issue a valid background-tracking credential.");
+        }
         try {
           await WorkerTracking.startTracking({
             apiUrl: apiClient.getBaseURL(),
-            token: apiClient.getToken(),
+            trackingCredential: deviceCredential.token,
+            workerId,
+            deviceId: nativeStatus.deviceId,
+            expiresAt: serverExpiresAt,
           });
         } catch (nativeError) {
           await apiClient.stopWorkerLocationShift().catch(() => {});
@@ -427,7 +507,7 @@ function WorkerShiftPanel() {
         }
         setSession(normalizeSession(startData.session));
         setCollector("native");
-        setMessage("Background GPS is running. Keep the LogiTrack notification enabled while on duty.");
+        setMessage("Background GPS is running. It continues after sign-out, screen-off, or app closure until you stop it or the shift expires.");
       } else {
         if (!window.isSecureContext || !navigator.geolocation) {
           throw new Error("Open LogiTrack over HTTPS on a GPS-enabled phone to start duty tracking.");
@@ -438,7 +518,7 @@ function WorkerShiftPanel() {
           const locationData = await apiClient.updateWorkerLocation(positionPayload(initialPosition));
           setSession(normalizeSession(locationData.session));
           beginBrowserCollector(initialPosition);
-          setMessage("Live duty tracking started. Keep this browser page open for continuous updates.");
+          setMessage("Browser duty tracking started. Keep this page open; signing out or closing it stops location updates.");
         } catch (updateError) {
           await apiClient.stopWorkerLocationShift().catch(() => {});
           throw updateError;
@@ -549,7 +629,9 @@ function WorkerShiftPanel() {
             </div>
             <div className="flex gap-3 rounded-2xl border border-slate-700 bg-slate-950/50 p-4 text-sm text-slate-300">
               <LocateFixed className="h-5 w-5 shrink-0 text-amber-400" />
-              <p>{nativeTrackingAvailable ? "The Android app can keep tracking in the background with a permanent notification." : "Browser tracking requires this page to remain open; use the Android app for reliable background tracking."}</p>
+              <p>{nativeTrackingAvailable
+                ? "Android keeps sharing after sign-out, screen-off, or swipe-away. Use Stop here or in the permanent notification; otherwise it ends automatically at the server expiry."
+                : "Browser tracking requires this page to remain open and stops when you sign out or close it. Install the Android app for reliable background tracking."}</p>
             </div>
           </div>
         </div>
@@ -719,7 +801,7 @@ function OperationsTrackingPanel({ customerView = false }) {
 }
 
 export default function WorkerLocationTracking({ user }) {
-  if (user?.systemRole === ROLES.WORKER) return <WorkerShiftPanel />;
+  if (user?.systemRole === ROLES.WORKER) return <WorkerShiftPanel user={user} />;
   if (user?.systemRole === ROLES.ADMIN || user?.systemRole === ROLES.STAFF) return <OperationsTrackingPanel />;
   return <OperationsTrackingPanel customerView />;
 }

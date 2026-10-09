@@ -1,6 +1,7 @@
 import WorkerLocationSession from '../models/WorkerLocationSession.js';
 import Shipment from '../models/Shipment.js';
 import User, { ROLES } from '../models/User.js';
+import { issueWorkerLocationCredential } from '../utils/workerLocationCredential.js';
 
 export const SHIFT_DURATION_MS = 8 * 60 * 60 * 1000;
 export const STALE_AFTER_MS = 30 * 1000;
@@ -148,22 +149,54 @@ export const createWorkerLocationHandlers = ({
   WorkerLocationSessionModel = WorkerLocationSession,
   ShipmentModel = Shipment,
   UserModel = User,
+  issueDeviceCredential = issueWorkerLocationCredential,
   now = () => new Date(),
 } = {}) => {
   const currentTime = () => asDate(now());
 
+  const rotateDeviceCredential = async (session, workerId, at) => {
+    const issued = issueDeviceCredential({
+      workerId,
+      sessionId: session._id,
+      expiresAt: session.expiresAt,
+      now: at,
+    });
+    session.deviceCredentialHash = issued.jtiHash;
+    session.deviceCredentialIssuedAt = at;
+    await session.save();
+    return {
+      token: issued.token,
+      expiresAt: dateIso(issued.expiresAt),
+    };
+  };
+
   const expireOldSessions = async (at) => {
     await WorkerLocationSessionModel.updateMany(
       { active: true, expiresAt: { $lte: at } },
-      { $set: { active: false, endedAt: at, lastLocation: null } }
+      {
+        $set: {
+          active: false,
+          endedAt: at,
+          lastLocation: null,
+          deviceCredentialHash: null,
+          deviceCredentialIssuedAt: null,
+        },
+      }
     );
   };
 
   const startShift = async (req, res) => {
     const at = currentTime();
+    const background = req.body?.background === true;
     const device = sanitizeDeviceId(req.body?.deviceId);
     if (device.error) {
       return res.status(400).json({ success: false, message: device.error });
+    }
+    if (background && !device.value) {
+      return res.status(400).json({
+        success: false,
+        message: 'deviceId is required for background duty tracking.',
+      });
     }
 
     await expireOldSessions(at);
@@ -175,10 +208,15 @@ export const createWorkerLocationHandlers = ({
           message: 'This shift is already active on another registered device.',
         });
       }
+      if (device.value && !existing.deviceId) existing.deviceId = device.value;
+      const deviceCredential = background
+        ? await rotateDeviceCredential(existing, req.user._id, at)
+        : null;
       return res.status(200).json({
         success: true,
         message: 'Location shift is already active.',
         session: serializeSession(existing, at, { includeDeviceId: true }),
+        ...(deviceCredential ? { deviceCredential } : {}),
       });
     }
 
@@ -192,15 +230,22 @@ export const createWorkerLocationHandlers = ({
           active: true,
           deviceId: device.value,
           lastLocation: null,
+          deviceCredentialHash: null,
+          deviceCredentialIssuedAt: null,
         },
       },
       { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
     );
 
+    const deviceCredential = background
+      ? await rotateDeviceCredential(session, req.user._id, at)
+      : null;
+
     return res.status(201).json({
       success: true,
       message: 'Location shift started. It will expire after eight hours.',
       session: serializeSession(session, at, { includeDeviceId: true }),
+      ...(deviceCredential ? { deviceCredential } : {}),
     });
   };
 
@@ -223,6 +268,8 @@ export const createWorkerLocationHandlers = ({
       session.active = false;
       session.endedAt = at;
       session.lastLocation = null;
+      session.deviceCredentialHash = null;
+      session.deviceCredentialIssuedAt = null;
       await session.save();
       return res.status(410).json({
         success: false,
@@ -308,6 +355,8 @@ export const createWorkerLocationHandlers = ({
     session.active = false;
     session.endedAt = at;
     session.lastLocation = null;
+    session.deviceCredentialHash = null;
+    session.deviceCredentialIssuedAt = null;
     await session.save();
 
     return res.json({

@@ -133,6 +133,7 @@ test('worker shift lifecycle enforces rate limits, eight-hour expiry, and coordi
   await handlers.startShift(workerRequest({ deviceId: 'android-worker-1' }), response);
   assert.equal(response.statusCode, 201);
   assert.equal(response.body.session.status, 'WAITING');
+  assert.equal(response.body.deviceCredential, undefined);
   assert.equal(
     Date.parse(response.body.session.expiresAt) - Date.parse(response.body.session.startedAt),
     SHIFT_DURATION_MS
@@ -194,6 +195,56 @@ test('worker shift lifecycle enforces rate limits, eight-hour expiry, and coordi
   assert.equal(response.statusCode, 410);
   assert.equal(SessionModel.current.active, false);
   assert.equal(SessionModel.current.lastLocation, null);
+});
+
+test('background shift requires a device and rotates its restricted credential', async () => {
+  const clock = Date.parse('2026-10-06T10:00:00.000Z');
+  const SessionModel = createSessionModel();
+  let issuedCount = 0;
+  const handlers = createWorkerLocationHandlers({
+    WorkerLocationSessionModel: SessionModel,
+    now: () => new Date(clock),
+    issueDeviceCredential({ expiresAt }) {
+      issuedCount += 1;
+      return {
+        token: `device-token-${issuedCount}`,
+        jtiHash: `device-hash-${issuedCount}`,
+        expiresAt,
+      };
+    },
+  });
+  const workerRequest = (body = {}) => ({ user: { _id: 'worker-1' }, body });
+
+  let response = createResponse();
+  await handlers.startShift(workerRequest({ background: true }), response);
+  assert.equal(response.statusCode, 400);
+  assert.match(response.body.message, /deviceId is required/);
+  assert.equal(issuedCount, 0);
+
+  response = createResponse();
+  await handlers.startShift(
+    workerRequest({ background: true, deviceId: 'android-installation-1' }),
+    response
+  );
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.body.deviceCredential.token, 'device-token-1');
+  assert.equal(SessionModel.current.deviceCredentialHash, 'device-hash-1');
+  assert.equal(SessionModel.current.deviceId, 'android-installation-1');
+
+  response = createResponse();
+  await handlers.startShift(
+    workerRequest({ background: true, deviceId: 'android-installation-1' }),
+    response
+  );
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.deviceCredential.token, 'device-token-2');
+  assert.equal(SessionModel.current.deviceCredentialHash, 'device-hash-2');
+
+  response = createResponse();
+  await handlers.stopShift(workerRequest(), response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(SessionModel.current.deviceCredentialHash, null);
+  assert.equal(SessionModel.current.deviceCredentialIssuedAt, null);
 });
 
 test('customer response is scoped to active assignments and omits worker phone/device data', async () => {

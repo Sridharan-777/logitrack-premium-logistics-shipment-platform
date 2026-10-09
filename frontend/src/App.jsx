@@ -21,7 +21,10 @@ import AdminShipmentManagerModal from "./components/AdminShipmentManagerModal";
 import StaffWorkspaceView from "./components/StaffWorkspaceView";
 import StaffSalaryView from "./components/StaffSalaryView";
 import WorkerWorkspaceView from "./components/WorkerWorkspaceView";
-import WorkerLocationTracking, { stopWorkerTrackingDevice } from "./components/WorkerLocationTracking";
+import WorkerLocationTracking, {
+  getNativeWorkerTrackingStatus,
+  stopWorkerTrackingDevice,
+} from "./components/WorkerLocationTracking";
 import AIChatbot from "./components/AIChatbot";
 import ThemeSwitcher from "./components/ThemeSwitcher";
 import apiClient from "./api/client.js";
@@ -81,6 +84,9 @@ export default function App() {
   // Authenticated user profile state
   const [user, setUser] = useState(null);
   const [authRestoring, setAuthRestoring] = useState(() => Boolean(apiClient.getToken()));
+  const [logoutPrompt, setLogoutPrompt] = useState(null);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   // State Ledgers
   const [shipments, setShipments] = useDemoLedger("shipments", INITIAL_SHIPMENTS);
@@ -272,20 +278,58 @@ export default function App() {
       .finally(() => setAuthRestoring(false));
   }, []);
 
-  const handleLogout = async () => {
-    if (user?.systemRole === ROLES.WORKER) {
-      window.dispatchEvent(new Event("logitrack-stop-worker-location"));
-      await Promise.allSettled([
-        stopWorkerTrackingDevice(),
-        apiClient.stopWorkerLocationShift(),
-      ]);
+  const completeLogout = async ({ stopDevice = false, stopCurrentShift = false } = {}) => {
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    setLogoutError("");
+
+    try {
+      const stopTasks = [];
+      if (stopCurrentShift) {
+        window.dispatchEvent(new Event("logitrack-stop-worker-location"));
+        stopTasks.push(apiClient.stopWorkerLocationShift());
+      }
+      if (stopDevice) stopTasks.push(stopWorkerTrackingDevice());
+      if (stopTasks.length > 0) await Promise.allSettled(stopTasks);
+
+      await apiClient.logout().catch(() => apiClient.setToken(null));
+      setUser(null);
+      setSelectedShipmentId(null);
+      setEditingShipment(null);
+      setResolvingHoldId(null);
+      setLogoutPrompt(null);
+      setView("landing");
+    } catch (error) {
+      setLogoutError(error.message || "Sign out could not be completed. Please try again.");
+    } finally {
+      setLogoutBusy(false);
     }
-    await apiClient.logout().catch(() => apiClient.setToken(null));
-    setUser(null);
-    setSelectedShipmentId(null);
-    setEditingShipment(null);
-    setResolvingHoldId(null);
-    setView("landing");
+  };
+
+  const handleLogout = async () => {
+    if (logoutBusy) return;
+    setLogoutError("");
+
+    const nativeStatus = await getNativeWorkerTrackingStatus();
+    if (nativeStatus.tracking) {
+      const currentWorkerId = String(user?.id || user?._id || "");
+      const belongsToCurrentWorker = user?.systemRole === ROLES.WORKER
+        && Boolean(currentWorkerId)
+        && Boolean(nativeStatus.workerId)
+        && currentWorkerId === nativeStatus.workerId;
+      setLogoutPrompt({
+        nativeStatus,
+        belongsToCurrentWorker,
+      });
+      return;
+    }
+
+    if (user?.systemRole === ROLES.WORKER) {
+      await completeLogout({ stopDevice: true, stopCurrentShift: true });
+      return;
+    }
+
+    await completeLogout();
   };
 
   // Callback when a user books a courier
@@ -1066,6 +1110,76 @@ export default function App() {
           onSearchShipment={handleGuestSearchShipment}
           guestSearchFeedback={guestSearchFeedback}
         />
+      )}
+
+      {logoutPrompt && (
+        <div
+          className="fixed inset-0 z-[130] grid place-items-center bg-black/80 p-4 backdrop-blur-md"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="location-logout-title"
+          aria-describedby="location-logout-description"
+        >
+          <section className="w-full max-w-lg space-y-5 rounded-3xl border border-amber-400/30 bg-slate-900 p-6 text-slate-100 shadow-2xl md:p-8">
+            <div className="space-y-2">
+              <span className="inline-flex rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-300">
+                Location sharing is active
+              </span>
+              <h2 id="location-logout-title" className="text-2xl font-black text-white">
+                Choose what happens after sign-out
+              </h2>
+              <p id="location-logout-description" className="text-sm leading-6 text-slate-300">
+                {logoutPrompt.belongsToCurrentWorker
+                  ? "This worker's Android foreground service can keep sharing during the active duty session, even after sign-out, screen-off, or swipe-away."
+                  : "This phone is sharing location for a different worker account. Keeping it active will not attach that service to the account currently signed in."}
+              </p>
+              <p className="text-xs leading-5 text-slate-400">
+                Sharing still ends from the Android notification, the duty Stop button, or automatically at the server expiry.
+              </p>
+            </div>
+
+            {logoutError ? (
+              <div role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm font-semibold text-rose-200">
+                {logoutError}
+              </div>
+            ) : null}
+
+            <div className="grid gap-3">
+              <button
+                type="button"
+                disabled={logoutBusy}
+                onClick={() => completeLogout({
+                  stopCurrentShift: !logoutPrompt.belongsToCurrentWorker && user?.systemRole === ROLES.WORKER,
+                })}
+                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-black text-slate-950 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-50"
+              >
+                {logoutBusy ? "Signing out..." : "Keep sharing & sign out"}
+              </button>
+              <button
+                type="button"
+                disabled={logoutBusy}
+                onClick={() => completeLogout({
+                  stopDevice: true,
+                  stopCurrentShift: user?.systemRole === ROLES.WORKER,
+                })}
+                className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-wait disabled:opacity-50"
+              >
+                Stop sharing & sign out
+              </button>
+              <button
+                type="button"
+                disabled={logoutBusy}
+                onClick={() => {
+                  setLogoutPrompt(null);
+                  setLogoutError("");
+                }}
+                className="rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
       {view === "landing" && guestResult && <div role="dialog" aria-modal="true" aria-label="Shipment status" className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4"><section className="p-6 rounded-2xl bg-slate-900 text-slate-100"><h2 className="text-xl font-bold">{guestResult.id}</h2><p>{guestResult.status}</p><p>{guestResult.estimatedDelivery}</p><button className="gps-button mt-4" onClick={() => setGuestResult(null)}>Close</button></section></div>}

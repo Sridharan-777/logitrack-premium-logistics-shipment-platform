@@ -8,7 +8,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
@@ -39,6 +38,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -49,8 +49,10 @@ public class WorkerTrackingService extends Service {
     static final String ACTION_START = "com.logitrack.logistics.action.START_WORKER_TRACKING";
     static final String ACTION_STOP = "com.logitrack.logistics.action.STOP_WORKER_TRACKING";
     static final String EXTRA_API_URL = "worker_tracking_api_url";
-    static final String EXTRA_WORKER_TOKEN = "worker_tracking_worker_token";
-    static final long SESSION_DURATION_MILLIS = 8L * 60L * 60L * 1000L;
+    static final String EXTRA_TRACKING_CREDENTIAL = "worker_tracking_credential";
+    static final String EXTRA_WORKER_ID = "worker_tracking_worker_id";
+    static final String EXTRA_DEVICE_ID = "worker_tracking_device_id";
+    static final String EXTRA_EXPIRES_AT = "worker_tracking_expires_at";
 
     private static final long UPDATE_INTERVAL_MILLIS = 8_000L;
     private static final long EXPIRY_CHECK_INTERVAL_MILLIS = 60_000L;
@@ -58,8 +60,6 @@ public class WorkerTrackingService extends Service {
     private static final long FORCE_STOP_DELAY_MILLIS = 5_000L;
     private static final int NOTIFICATION_ID = 2922;
     private static final String NOTIFICATION_CHANNEL_ID = "worker_location_tracking";
-    private static final String SESSION_PREFS = "worker_tracking_session";
-    private static final String PREF_EXPIRES_AT = "expires_at";
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final AtomicBoolean uploadInFlight = new AtomicBoolean(false);
@@ -69,7 +69,9 @@ public class WorkerTrackingService extends Service {
     private LocationCallback locationCallback;
     private String apiBaseUrl;
     private String locationEndpoint;
-    private String workerToken;
+    private String trackingCredential;
+    private String workerId;
+    private String deviceId;
     private long expiresAtMillis;
     private long expiresAtElapsedRealtime;
     private boolean locationUpdatesActive;
@@ -100,7 +102,7 @@ public class WorkerTrackingService extends Service {
         try {
             context.startService(stopIntent);
         } catch (IllegalStateException | SecurityException exception) {
-            clearSessionPreferences(context);
+            SecureTrackingStore.clear(context);
             context.stopService(new Intent(context, WorkerTrackingService.class));
         }
     }
@@ -131,11 +133,16 @@ public class WorkerTrackingService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) {
-            requestStop(false);
-            return START_NOT_STICKY;
+            SecureTrackingStore.Session restored = SecureTrackingStore.load(this);
+            if (!activateSession(restored, false)) {
+                requestStop(false);
+                return START_NOT_STICKY;
+            }
+            return START_STICKY;
         }
 
         if (ACTION_STOP.equals(intent.getAction())) {
+            restoreSensitiveFields(SecureTrackingStore.load(this));
             requestStop(true);
             return START_NOT_STICKY;
         }
@@ -145,30 +152,32 @@ public class WorkerTrackingService extends Service {
             return START_NOT_STICKY;
         }
 
-        String apiUrl = intent.getStringExtra(EXTRA_API_URL);
-        String token = intent.getStringExtra(EXTRA_WORKER_TOKEN);
-        if (apiUrl == null || token == null || apiUrl.length() == 0 || token.length() == 0) {
+        SecureTrackingStore.Session requested = new SecureTrackingStore.Session(
+            intent.getStringExtra(EXTRA_API_URL),
+            intent.getStringExtra(EXTRA_TRACKING_CREDENTIAL),
+            intent.getStringExtra(EXTRA_WORKER_ID),
+            intent.getStringExtra(EXTRA_DEVICE_ID),
+            intent.getLongExtra(EXTRA_EXPIRES_AT, 0L)
+        );
+        if (!requested.isValidAt(System.currentTimeMillis())) {
             requestStop(false);
             return START_NOT_STICKY;
         }
 
-        stopLocationUpdates();
-        apiBaseUrl = apiUrl;
-        locationEndpoint = apiUrl + "/worker-locations/shift/location";
-        workerToken = token;
-        expiresAtMillis = System.currentTimeMillis() + SESSION_DURATION_MILLIS;
-        expiresAtElapsedRealtime = SystemClock.elapsedRealtime() + SESSION_DURATION_MILLIS;
-        nextUploadAllowedAtMillis = 0L;
-        consecutiveUploadFailures = 0;
-        getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
-            .edit()
-            .putLong(PREF_EXPIRES_AT, expiresAtMillis)
-            .apply();
+        SecureTrackingStore.Session existing = SecureTrackingStore.load(this);
+        if (existing != null && !existing.workerId.equals(requested.workerId)) {
+            if (!activateSession(existing, false)) {
+                requestStop(false);
+                return START_NOT_STICKY;
+            }
+            return START_STICKY;
+        }
 
-        startAsForegroundService();
-        scheduleExpiryCheck();
-        startLocationUpdates();
-        return START_NOT_STICKY;
+        if (!activateSession(requested, true)) {
+            requestStop(false);
+            return START_NOT_STICKY;
+        }
+        return START_STICKY;
     }
 
     @Override
@@ -178,7 +187,7 @@ public class WorkerTrackingService extends Service {
         stopLocationUpdates();
         disconnect(activeLocationConnection);
         disconnect(activeStopConnection);
-        clearSensitiveState();
+        clearSensitiveMemory();
         if (networkExecutor != null) {
             networkExecutor.shutdownNow();
         }
@@ -192,6 +201,45 @@ public class WorkerTrackingService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    private boolean activateSession(SecureTrackingStore.Session session, boolean persist) {
+        long nowMillis = System.currentTimeMillis();
+        if (session == null || !session.isValidAt(nowMillis) || stopping) {
+            return false;
+        }
+
+        if (persist) {
+            try {
+                SecureTrackingStore.save(this, session);
+            } catch (GeneralSecurityException exception) {
+                return false;
+            }
+        }
+
+        stopLocationUpdates();
+        restoreSensitiveFields(session);
+        long remainingMillis = session.expiresAtMillis - nowMillis;
+        expiresAtElapsedRealtime = SystemClock.elapsedRealtime() + remainingMillis;
+        nextUploadAllowedAtMillis = 0L;
+        consecutiveUploadFailures = 0;
+
+        startAsForegroundService();
+        scheduleExpiryCheck();
+        startLocationUpdates();
+        return true;
+    }
+
+    private void restoreSensitiveFields(SecureTrackingStore.Session session) {
+        if (session == null) {
+            return;
+        }
+        apiBaseUrl = session.apiUrl;
+        locationEndpoint = session.apiUrl + "/worker-locations/shift/device/location";
+        trackingCredential = session.trackingCredential;
+        workerId = session.workerId;
+        deviceId = session.deviceId;
+        expiresAtMillis = session.expiresAtMillis;
     }
 
     private void startAsForegroundService() {
@@ -243,7 +291,8 @@ public class WorkerTrackingService extends Service {
             stopping ||
             now < nextUploadAllowedAtMillis ||
             locationEndpoint == null ||
-            workerToken == null ||
+            trackingCredential == null ||
+            deviceId == null ||
             networkExecutor == null ||
             networkExecutor.isShutdown()
         ) {
@@ -254,7 +303,8 @@ public class WorkerTrackingService extends Service {
         }
 
         final String endpoint = locationEndpoint;
-        final String token = workerToken;
+        final String credential = trackingCredential;
+        final String currentDeviceId = deviceId;
         final double latitude = location.getLatitude();
         final double longitude = location.getLongitude();
         final float accuracy = location.hasAccuracy() ? Math.max(0.0f, location.getAccuracy()) : 0.0f;
@@ -263,7 +313,15 @@ public class WorkerTrackingService extends Service {
         try {
             networkExecutor.execute(() -> {
                 try {
-                    PostResult result = postLocation(endpoint, token, latitude, longitude, accuracy, timestamp);
+                    PostResult result = postLocation(
+                        endpoint,
+                        credential,
+                        currentDeviceId,
+                        latitude,
+                        longitude,
+                        accuracy,
+                        timestamp
+                    );
                     handleLocationResponse(result);
                 } finally {
                     uploadInFlight.set(false);
@@ -317,7 +375,8 @@ public class WorkerTrackingService extends Service {
 
     private PostResult postLocation(
         String endpoint,
-        String token,
+        String credential,
+        String currentDeviceId,
         double latitude,
         double longitude,
         float accuracy,
@@ -330,9 +389,10 @@ public class WorkerTrackingService extends Service {
             payload.put("longitude", longitude);
             payload.put("accuracy", accuracy);
             payload.put("timestamp", timestamp);
+            payload.put("deviceId", currentDeviceId);
             byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
 
-            connection = openPostConnection(endpoint, token, body.length, 10_000);
+            connection = openPostConnection(endpoint, credential, body.length, 10_000);
             activeLocationConnection = connection;
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(body);
@@ -361,19 +421,21 @@ public class WorkerTrackingService extends Service {
         disconnect(activeLocationConnection);
         stopForegroundCompat();
 
-        final String stopEndpoint = apiBaseUrl == null ? null : apiBaseUrl + "/worker-locations/shift/stop";
-        final String token = workerToken;
+        final String stopEndpoint = apiBaseUrl == null ? null : apiBaseUrl + "/worker-locations/shift/device/stop";
+        final String credential = trackingCredential;
+        final String currentDeviceId = deviceId;
         if (
             notifyBackend &&
             stopEndpoint != null &&
-            token != null &&
+            credential != null &&
+            currentDeviceId != null &&
             stopExecutor != null &&
             !stopExecutor.isShutdown()
         ) {
             mainHandler.postDelayed(forceStopRunnable, FORCE_STOP_DELAY_MILLIS);
             try {
                 stopExecutor.execute(() -> {
-                    postStop(stopEndpoint, token);
+                    postStop(stopEndpoint, credential, currentDeviceId);
                     mainHandler.post(this::finishStop);
                 });
                 return;
@@ -385,17 +447,19 @@ public class WorkerTrackingService extends Service {
         finishStop();
     }
 
-    private void postStop(String endpoint, String token) {
+    private void postStop(String endpoint, String credential, String currentDeviceId) {
         HttpURLConnection connection = null;
         try {
-            byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
-            connection = openPostConnection(endpoint, token, body.length, 2_000);
+            JSONObject payload = new JSONObject();
+            payload.put("deviceId", currentDeviceId);
+            byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
+            connection = openPostConnection(endpoint, credential, body.length, 2_000);
             activeStopConnection = connection;
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(body);
             }
             connection.getResponseCode();
-        } catch (IOException ignored) {
+        } catch (IOException | JSONException ignored) {
             // Local tracking must stop even when the best-effort server notification fails.
         } finally {
             if (activeStopConnection == connection) {
@@ -405,13 +469,13 @@ public class WorkerTrackingService extends Service {
         }
     }
 
-    private HttpURLConnection openPostConnection(String endpoint, String token, int bodyLength, int timeoutMillis) throws IOException {
+    private HttpURLConnection openPostConnection(String endpoint, String credential, int bodyLength, int timeoutMillis) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
         connection.setRequestMethod("POST");
         connection.setConnectTimeout(timeoutMillis);
         connection.setReadTimeout(timeoutMillis);
         connection.setDoOutput(true);
-        connection.setRequestProperty("Authorization", "Bearer " + token);
+        connection.setRequestProperty("Authorization", "Bearer " + credential);
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         connection.setRequestProperty("Accept", "application/json");
         connection.setFixedLengthStreamingMode(bodyLength);
@@ -470,7 +534,8 @@ public class WorkerTrackingService extends Service {
         stopFinished = true;
         mainHandler.removeCallbacks(forceStopRunnable);
         disconnect(activeStopConnection);
-        clearSensitiveState();
+        SecureTrackingStore.clear(this);
+        clearSensitiveMemory();
         stopSelf();
     }
 
@@ -482,20 +547,17 @@ public class WorkerTrackingService extends Service {
         }
     }
 
-    private void clearSensitiveState() {
-        workerToken = null;
+    private void clearSensitiveMemory() {
+        trackingCredential = null;
+        workerId = null;
+        deviceId = null;
         apiBaseUrl = null;
         locationEndpoint = null;
         expiresAtMillis = 0L;
         expiresAtElapsedRealtime = 0L;
         nextUploadAllowedAtMillis = 0L;
         consecutiveUploadFailures = 0;
-        clearSessionPreferences(this);
-    }
-
-    private static void clearSessionPreferences(Context context) {
-        SharedPreferences preferences = context.getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE);
-        preferences.edit().clear().apply();
+        uploadInFlight.set(false);
     }
 
     private static void disconnect(HttpURLConnection connection) {

@@ -252,8 +252,11 @@ class ApiClient {
   }
 
   // Authenticated worker phone-location endpoints
-  async startWorkerLocationShift() {
-    return this.request('/worker-locations/shift/start', { method: 'POST' });
+  async startWorkerLocationShift(options = {}) {
+    return this.request('/worker-locations/shift/start', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
   }
 
   async updateWorkerLocation(locationData) {
